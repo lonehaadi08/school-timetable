@@ -3,11 +3,18 @@ const axios = require('axios');
 const csv = require('csv-parser');
 const { Readable } = require('stream');
 const admin = require('firebase-admin');
+const crypto = require('crypto');
 
-// Load Firebase Admin Credentials
-const serviceAccount = require('./serviceAccount.json');
+// --- SMART LOGIN FIX ---
+let serviceAccount;
+// Check if running on GitHub (Env Var) or Local (File)
+if (process.env.FIREBASE_SERVICE_ACCOUNT) {
+  serviceAccount = JSON.parse(process.env.FIREBASE_SERVICE_ACCOUNT);
+} else {
+  serviceAccount = require('./serviceAccount.json');
+}
+// -----------------------
 
-// Initialize Firebase
 if (!admin.apps.length) {
   admin.initializeApp({
     credential: admin.credential.cert(serviceAccount)
@@ -17,9 +24,10 @@ if (!admin.apps.length) {
 const db = admin.firestore();
 const SHEET_URL = process.env.SHEET_URL;
 
-// 1. Fetch CSV as Raw Rows (No Headers)
+// --- Memory Cache for Smart Sync ---
+let lastDataHash = "";
+
 async function fetchSheetData() {
-  console.log('Fetching Google Sheet...');
   try {
     const response = await axios.get(SHEET_URL, { responseType: 'arraybuffer' });
     const buffer = Buffer.from(response.data);
@@ -27,8 +35,6 @@ async function fetchSheetData() {
     
     const results = [];
     return new Promise((resolve, reject) => {
-      // headers: false tells the parser to give us raw arrays [ColA, ColB, ColC...]
-      // instead of trying to guess names
       stream
         .pipe(csv({ headers: false })) 
         .on('data', (data) => results.push(Object.values(data)))
@@ -36,22 +42,15 @@ async function fetchSheetData() {
         .on('error', (err) => reject(err));
     });
   } catch (error) {
-    console.error("Error fetching CSV. Check URL.");
+    console.error("Error fetching CSV.");
     throw error;
   }
 }
 
-// 2. Smart Grid Parser
 function processData(rows) {
   const timetable = {};
-  
-  if (rows.length < 2) {
-    console.log("CSV is too short.");
-    return {};
-  }
+  if (rows.length < 2) return {};
 
-  // STEP A: Find the Header Row
-  // We look for a row that contains "Room", "Class", or "Time"
   let headerRowIndex = -1;
   for (let i = 0; i < 5 && i < rows.length; i++) {
     const rowStr = rows[i].join(' ').toLowerCase();
@@ -61,16 +60,9 @@ function processData(rows) {
     }
   }
 
-  if (headerRowIndex === -1) {
-    console.error("Could not find a Header row (e.g. 'Class', 'Room') in first 5 rows.");
-    return {};
-  }
+  if (headerRowIndex === -1) return {};
 
   const headers = rows[headerRowIndex];
-  console.log(`Found headers on Row ${headerRowIndex + 1}:`, headers);
-
-  // STEP B: Identify Time Columns
-  // Any column after the first one is likely a Time Slot (e.g. "9:00 AM")
   const timeSlots = [];
   for (let i = 1; i < headers.length; i++) {
     if (headers[i] && headers[i].trim() !== '') {
@@ -78,64 +70,52 @@ function processData(rows) {
     }
   }
 
-  // STEP C: Parse Data Rows
-  // Start reading from the row AFTER the header
   for (let i = headerRowIndex + 1; i < rows.length; i++) {
     const row = rows[i];
-    const className = row[0]; // Assuming First Column is ALWAYS Class/Room Name
-
+    const className = row[0];
     if (!className || className.trim() === '') continue;
 
-    // Sanitize Class Name for ID (e.g. "10 A" -> "10A")
     const cleanName = className.trim();
+    if (!timetable[cleanName]) timetable[cleanName] = { schedule: {} };
 
-    if (!timetable[cleanName]) {
-        timetable[cleanName] = { schedule: {} };
-    }
-
-    // Since your sheet seems to be "Daily", we will treat this as "Today's" schedule.
-    // Or we can map specific days if the sheet has them. 
-    // For now, we store the times flat.
     const dailySchedule = {};
-    
     timeSlots.forEach(slot => {
         const subject = row[slot.index];
         if (subject && subject.trim() !== '') {
             dailySchedule[slot.time] = subject.trim();
         }
     });
-
-    // Store under a generic 'Today' key or merge
     timetable[cleanName] = dailySchedule;
   }
-
   return timetable;
 }
 
-// 3. Upload to Firestore
 async function updateFirestore(data) {
+  // Use a fallback if data is empty to prevent crashes
+  const currentJsonString = JSON.stringify(data || {});
+  const currentHash = crypto.createHash('md5').update(currentJsonString).digest('hex');
+
+  if (currentHash === lastDataHash) {
+    console.log("⏸️ Data unchanged. Skipping.");
+    return;
+  }
+  
   const batch = db.batch();
   const collectionRef = db.collection('timetables');
   const classNames = Object.keys(data);
 
-  console.log(`Preparing to update ${classNames.length} classes...`);
-
   for (const className of classNames) {
-    const schedule = data[className];
-    
-    // Create Document ID (e.g. "10A")
     const docId = className.replace(/\//g, '-').trim(); 
     const docRef = collectionRef.doc(docId);
-    
-    // We update just the 'schedule' field
     batch.set(docRef, { 
-      schedule: { "Today": schedule }, // Nesting under "Today" for the frontend
+      schedule: { "Today": data[className] },
       lastUpdated: admin.firestore.FieldValue.serverTimestamp() 
     });
   }
 
   await batch.commit();
-  console.log('✅ Firestore update complete.');
+  lastDataHash = currentHash;
+  console.log('✅ Updated.');
 }
 
 async function runSync() {
