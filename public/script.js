@@ -59,25 +59,30 @@ function switchView(view) {
 
 function renderResults(query) {
     if (!query) {
-        els.results.innerHTML = `<div class="empty-state">Enter your batch code to see the schedule.</div>`;
+        els.results.innerHTML = `<div class="empty-state">Type your batch code to see results.</div>`;
         return;
     }
 
     const dataSet = currentView === 'daily' ? timetableData.daily : timetableData.weekly;
-    if (!dataSet) return;
+    
+    // SAFETY CHECK: If data is missing, stop here
+    if (!dataSet) {
+        console.warn("Dataset is empty or undefined");
+        return;
+    }
 
-    // Filter by Batch Name
-    const matches = dataSet.filter(item => 
-        item['Batch'].toLowerCase().includes(query.toLowerCase())
-    );
+    const matches = dataSet.filter(item => {
+        // SAFETY FIX: Check if 'Batch' exists before using it
+        const batchVal = item['Batch'] ? String(item['Batch']) : ""; 
+        return batchVal.toLowerCase().includes(query.toLowerCase());
+    });
 
     if (matches.length === 0) {
-        els.results.innerHTML = `<div class="empty-state">No batch found for "${query}"</div>`;
+        els.results.innerHTML = `<div class="empty-state">No classes found for "${query}" in ${currentView} view.</div>`;
     } else {
         els.results.innerHTML = matches.map(item => createCard(item)).join('');
     }
 }
-
 function createCard(item) {
     const batchName = item['Batch'];
     
