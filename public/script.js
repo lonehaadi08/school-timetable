@@ -1,142 +1,177 @@
-// CONFIGURATION
 const DATA_URL = 'https://raw.githubusercontent.com/lonehaadi08/school-timetable/main/public/data.json';
 
-// STATE
 let timetableData = { daily: [], weekly: [] };
 let currentView = 'daily'; 
 
 const els = {
     input: document.getElementById('batchInput'),
+    clearBtn: document.getElementById('clearSearch'),
     results: document.getElementById('resultsArea'),
-    status: document.getElementById('statusMsg'),
+    lastUpdated: document.getElementById('lastUpdated'),
     btnDaily: document.getElementById('btnDaily'),
-    btnWeekly: document.getElementById('btnWeekly'),
-    lastUpdated: document.getElementById('lastUpdated')
+    btnWeekly: document.getElementById('btnWeekly')
 };
 
-// 1. INIT
+// 1. Time Ago Helper (e.g. "Updated 5m ago")
+function timeAgo(dateString) {
+    if (!dateString) return "Offline";
+    // Fix python timestamp format if needed
+    const updated = new Date(dateString.replace(" ", "T")); 
+    const now = new Date();
+    const diffMs = now - updated;
+    const diffMins = Math.floor(diffMs / 60000);
+    
+    if (diffMins < 1) return "Just now";
+    if (diffMins < 60) return `${diffMins}m ago`;
+    const diffHrs = Math.floor(diffMins / 60);
+    return `${diffHrs}h ago`;
+}
+
+// 2. Init
 async function init() {
-    els.status.textContent = "Fetching schedule...";
     try {
         const response = await fetch(`${DATA_URL}?t=${new Date().getTime()}`);
-        if (!response.ok) throw new Error("Failed to load data");
+        if (!response.ok) throw new Error("Network error");
         
         const json = await response.json();
         timetableData = json;
         
-        els.status.textContent = "Ready";
-        if(json.metadata && json.metadata.last_updated) {
-            // Format the update time nicely
-            const date = new Date(json.metadata.last_updated.replace(" ", "T"));
-            els.lastUpdated.textContent = `Last updated: ${date.toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'})}`;
+        // Set update time
+        if (json.metadata && json.metadata.last_updated) {
+            els.lastUpdated.textContent = `Updated ${timeAgo(json.metadata.last_updated)}`;
         }
 
+        // Restore Search
         const savedBatch = localStorage.getItem('lastBatch');
         if (savedBatch) {
             els.input.value = savedBatch;
+            toggleClearBtn(true);
             renderResults(savedBatch);
         }
-    } catch (error) {
-        console.error(error);
-        els.status.textContent = "⚠️ Error loading data. Refresh page.";
+    } catch (e) {
+        console.error(e);
+        els.lastUpdated.textContent = "Offline Mode";
     }
 }
 
-// 2. EVENTS
+// 3. UI Helpers
+function toggleClearBtn(show) {
+    if (show) els.clearBtn.classList.remove('hidden');
+    else els.clearBtn.classList.add('hidden');
+}
+
 els.input.addEventListener('input', (e) => {
-    const query = e.target.value.trim();
-    localStorage.setItem('lastBatch', query);
-    renderResults(query);
+    const val = e.target.value.trim();
+    toggleClearBtn(val.length > 0);
+    localStorage.setItem('lastBatch', val);
+    renderResults(val);
 });
 
-// 3. LOGIC
-function switchView(view) {
+els.clearBtn.addEventListener('click', () => {
+    els.input.value = '';
+    toggleClearBtn(false);
+    localStorage.setItem('lastBatch', '');
+    renderResults('');
+});
+
+window.switchView = (view) => {
     currentView = view;
     els.btnDaily.classList.toggle('active', view === 'daily');
     els.btnWeekly.classList.toggle('active', view === 'weekly');
     renderResults(els.input.value.trim());
-}
+};
 
+// 4. Render Logic
 function renderResults(query) {
     if (!query) {
-        els.results.innerHTML = `<div class="empty-state">Type your batch code to see results.</div>`;
+        els.results.innerHTML = `
+            <div class="empty-state-hero">
+                <div class="illustration">🎓</div>
+                <h2>Student Portal</h2>
+                <p>Type your batch code to find your classes.</p>
+            </div>`;
         return;
     }
 
     const dataSet = currentView === 'daily' ? timetableData.daily : timetableData.weekly;
-    
-    // SAFETY CHECK: If data is missing, stop here
-    if (!dataSet) {
-        console.warn("Dataset is empty or undefined");
-        return;
-    }
+    if (!dataSet) return;
 
     const matches = dataSet.filter(item => {
-        // SAFETY FIX: Check if 'Batch' exists before using it
-        const batchVal = item['Batch'] ? String(item['Batch']) : ""; 
-        return batchVal.toLowerCase().includes(query.toLowerCase());
+        const batch = item['Batch'] ? String(item['Batch']) : "";
+        return batch.toLowerCase().includes(query.toLowerCase());
     });
 
     if (matches.length === 0) {
-        els.results.innerHTML = `<div class="empty-state">No classes found for "${query}" in ${currentView} view.</div>`;
+        els.results.innerHTML = `
+            <div class="empty-state-hero">
+                <div class="illustration">🔍</div>
+                <p>No schedule found for "${query}"</p>
+            </div>`;
     } else {
-        els.results.innerHTML = matches.map(item => createCard(item)).join('');
+        els.results.innerHTML = matches.map(createCard).join('');
     }
 }
+
 function createCard(item) {
     const batchName = item['Batch'];
-    
-    // Group headers by Date
-    // Keys look like: "31 Jan - 9:00 AM" or "Room (31 Jan)"
     const scheduleByDate = {};
 
+    // Grouping Logic
     Object.keys(item).forEach(key => {
         if (key === "Batch") return;
 
-        // Extract Date from key (text between parenthesis or before dash)
         let dateKey = "Other";
         let info = key;
 
-        if (key.includes('(')) {
-            // Format: "Room (31 Jan)"
+        // Try to detect Date in key
+        if (key.includes('(')) { // e.g. Room (31 Jan)
             const match = key.match(/\((.*?)\)/);
             if (match) dateKey = match[1];
             info = key.split('(')[0].trim();
-        } else if (key.includes('-')) {
-            // Format: "31 Jan - 9:00 AM"
+        } else if (key.includes('-')) { // e.g. 31 Jan - 9:00 AM
             const parts = key.split('-');
             dateKey = parts[0].trim();
-            info = parts[1].trim();
+            info = parts.slice(1).join('-').trim(); // Join back if time had dashes
         }
 
-        if (!scheduleByDate[dateKey]) scheduleByDate[dateKey] = [];
-        scheduleByDate[dateKey].push({ label: info, value: item[key] });
+        if (!scheduleByDate[dateKey]) scheduleByDate[dateKey] = {};
+        
+        // Check if this is a Room or a Subject/Time
+        if (info.toLowerCase().includes('room')) {
+            scheduleByDate[dateKey].room = item[key];
+        } else {
+            if (!scheduleByDate[dateKey].classes) scheduleByDate[dateKey].classes = [];
+            scheduleByDate[dateKey].classes.push({ time: info, subject: item[key] });
+        }
     });
 
-    // Build HTML
+    // Generate HTML
     let datesHtml = '';
-    for (const [date, classes] of Object.entries(scheduleByDate)) {
-        const classRows = classes.map(c => `
+    for (const [date, data] of Object.entries(scheduleByDate)) {
+        if (!data.classes) continue;
+
+        const roomBadge = data.room ? `<span class="class-room">${data.room}</span>` : '';
+        
+        const rows = data.classes.map(c => `
             <div class="class-row">
-                <span class="class-time">${c.label}</span>
-                <span class="class-name">${c.value}</span>
+                <span class="class-time">${c.time}</span>
+                <span class="class-name">${c.subject}</span>
+                ${roomBadge} 
             </div>
         `).join('');
 
         datesHtml += `
             <div class="date-group">
                 <div class="date-header">📅 ${date}</div>
-                ${classRows}
+                ${rows}
             </div>
         `;
     }
 
     return `
         <div class="schedule-card">
-            <div class="card-header-main">
-                <span class="batch-tag">${batchName}</span>
-            </div>
-            ${datesHtml || '<div class="empty-state" style="padding:10px; font-size:0.9rem">No classes scheduled for this week.</div>'}
+            <div class="batch-tag">${batchName}</div>
+            ${datesHtml}
         </div>
     `;
 }

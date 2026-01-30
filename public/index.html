@@ -2,45 +2,46 @@
 <html lang="en">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Student Timetable Portal</title>
-    <meta name="description" content="Fast, reliable daily and weekly schedules for students.">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>Student Schedule</title>
+    <meta name="theme-color" content="#ffffff">
     <link rel="stylesheet" href="style.css">
-    <link rel="preconnect" href="https://raw.githubusercontent.com">
+    <link rel="icon" href="data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22><text y=%22.9em%22 font-size=%2290%22>📅</text></svg>">
 </head>
 <body>
 
-    <header class="app-header">
-        <div class="container">
-            <h1>Student Portal</h1>
-            <p class="subtitle">Check your classes instantly</p>
-        </div>
-    </header>
-
-    <main class="container">
-        <section class="search-section">
-            <div class="search-wrapper">
-                <input type="text" id="batchInput" placeholder="Enter your Batch Code (e.g., A1, B2)..." autocomplete="off">
-                <span class="search-icon">🔍</span>
+    <div class="app-layout">
+        <header class="sticky-header">
+            <div class="logo-area">
+                <h1>📅 Timetable</h1>
+                <div class="live-indicator">
+                    <span class="dot"></span>
+                    <span id="lastUpdated">Updating...</span>
+                </div>
             </div>
-            <p id="statusMsg" class="status-msg">Loading latest data...</p>
-        </section>
 
-        <div class="view-controls">
-            <button id="btnDaily" class="tab-btn active" onclick="switchView('daily')">Daily Schedule</button>
-            <button id="btnWeekly" class="tab-btn" onclick="switchView('weekly')">Weekly Plan</button>
-        </div>
-
-        <div id="resultsArea" class="results-grid">
-            <div class="empty-state">
-                Type your batch code above to see your schedule.
+            <div class="search-container">
+                <div class="input-group">
+                    <span class="search-icon">🔍</span>
+                    <input type="text" id="batchInput" placeholder="Enter Batch (e.g. RF28X)" autocomplete="off">
+                    <button id="clearSearch" class="hidden" aria-label="Clear search">✕</button>
+                </div>
             </div>
-        </div>
-    </main>
 
-    <footer class="app-footer">
-        <p>Data updates automatically. <br> <span id="lastUpdated"></span></p>
-    </footer>
+            <div class="tabs">
+                <button id="btnDaily" class="tab active" onclick="switchView('daily')">Daily</button>
+                <button id="btnWeekly" class="tab" onclick="switchView('weekly')">Weekly</button>
+            </div>
+        </header>
+
+        <main id="resultsArea" class="content-area">
+            <div class="empty-state-hero">
+                <div class="illustration">🎓</div>
+                <h2>Welcome Back</h2>
+                <p>Enter your batch code above to see your classes.</p>
+            </div>
+        </main>
+    </div>
 
     <script src="script.js"></script>
 </body>
