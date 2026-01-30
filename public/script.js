@@ -12,10 +12,9 @@ const els = {
     btnWeekly: document.getElementById('btnWeekly')
 };
 
-// 1. Time Ago Helper (e.g. "Updated 5m ago")
+// 1. Time Ago Helper
 function timeAgo(dateString) {
     if (!dateString) return "Offline";
-    // Fix python timestamp format if needed
     const updated = new Date(dateString.replace(" ", "T")); 
     const now = new Date();
     const diffMs = now - updated;
@@ -30,14 +29,15 @@ function timeAgo(dateString) {
 // 2. Init
 async function init() {
     try {
+        // Fetch data
         const response = await fetch(`${DATA_URL}?t=${new Date().getTime()}`);
         if (!response.ok) throw new Error("Network error");
         
         const json = await response.json();
         timetableData = json;
         
-        // Set update time
-        if (json.metadata && json.metadata.last_updated) {
+        // Update Timestamp (Check if element exists first)
+        if (els.lastUpdated && json.metadata && json.metadata.last_updated) {
             els.lastUpdated.textContent = `Updated ${timeAgo(json.metadata.last_updated)}`;
         }
 
@@ -49,8 +49,8 @@ async function init() {
             renderResults(savedBatch);
         }
     } catch (e) {
-        console.error(e);
-        els.lastUpdated.textContent = "Offline Mode";
+        console.error("Init Error:", e);
+        if(els.lastUpdated) els.lastUpdated.textContent = "Offline Mode";
     }
 }
 
@@ -116,27 +116,24 @@ function createCard(item) {
     const batchName = item['Batch'];
     const scheduleByDate = {};
 
-    // Grouping Logic
     Object.keys(item).forEach(key => {
         if (key === "Batch") return;
 
         let dateKey = "Other";
         let info = key;
 
-        // Try to detect Date in key
-        if (key.includes('(')) { // e.g. Room (31 Jan)
+        if (key.includes('(')) { 
             const match = key.match(/\((.*?)\)/);
             if (match) dateKey = match[1];
             info = key.split('(')[0].trim();
-        } else if (key.includes('-')) { // e.g. 31 Jan - 9:00 AM
+        } else if (key.includes('-')) { 
             const parts = key.split('-');
             dateKey = parts[0].trim();
-            info = parts.slice(1).join('-').trim(); // Join back if time had dashes
+            info = parts.slice(1).join('-').trim(); 
         }
 
         if (!scheduleByDate[dateKey]) scheduleByDate[dateKey] = {};
         
-        // Check if this is a Room or a Subject/Time
         if (info.toLowerCase().includes('room')) {
             scheduleByDate[dateKey].room = item[key];
         } else {
@@ -145,7 +142,6 @@ function createCard(item) {
         }
     });
 
-    // Generate HTML
     let datesHtml = '';
     for (const [date, data] of Object.entries(scheduleByDate)) {
         if (!data.classes) continue;
