@@ -1,7 +1,6 @@
 {
   "metadata": {
-<<<<<<< HEAD
-    "last_updated": "2026-01-30 23:29:45.205035"
+    "last_updated": "2026-01-30 23:50:04.824631"
   },
   "daily": [
     {
@@ -106,36 +105,10 @@
       "31 Jan, Sat - 3:30 PM": "RTS",
       "31 Jan, Sat - 4:35 PM": "RTS",
       "31 Jan, Sat - 5:40 PM": "RTS"
-=======
-    "last_updated": "Just now"
-  },
-  "daily": [
-    {
-      "31 Jan, Sat": "9:00 AM"
-    },
-    {
-      "31 Jan, Sat": "Che(FR)"
-    },
-    {
-      "31 Jan, Sat": "Mat(AF)"
-    },
-    {
-      "31 Jan, Sat": "Mat(AK)"
-    },
-    {
-      "31 Jan, Sat": "Phy(FN)"
-    },
-    {
-      "31 Jan, Sat": "Phy(FB)"
-    },
-    {
-      "31 Jan, Sat": "Bio(UR)"
->>>>>>> d2eed9a0ed7f8693fb937aa5a02d99058cd48ac4
     }
   ],
   "weekly": [
     {
-<<<<<<< HEAD
       "Batch": "NEET 2026",
       "30 Jan, Fri - 3:30 PM": "RUBT-06@3:00 PM",
       "30 Jan, Fri - 4:35 PM": "RUBT-06",
@@ -553,63 +526,6 @@
       "28 Jan, Wed - 4:35 PM": "Che(MA)",
       "28 Jan, Wed - 5:40 PM": "Mat(AF)",
       "Room (28 Jan, Wed)": "R04"
-=======
-      "2": "NEET 2026"
-    },
-    {
-      "2": "JEE 2026"
-    },
-    {
-      "2": "RB26X"
-    },
-    {
-      "2": "RR26A"
-    },
-    {
-      "2": "RF28E"
-    },
-    {
-      "2": "RF28X"
-    },
-    {
-      "2": "RF28Y"
-    },
-    {
-      "2": "RF27U"
-    },
-    {
-      "2": "RF27V"
-    },
-    {
-      "2": "RM28X"
-    },
-    {
-      "2": "RM28Y"
-    },
-    {
-      "2": "RM27X"
-    },
-    {
-      "2": "Extra 1"
-    },
-    {
-      "2": "Extra 2"
-    },
-    {
-      "2": "RI30A"
-    },
-    {
-      "2": "RI29A"
-    },
-    {
-      "2": "RF28A"
-    },
-    {
-      "2": "RF27Z"
-    },
-    {
-      "2": "RF27A"
->>>>>>> d2eed9a0ed7f8693fb937aa5a02d99058cd48ac4
     }
   ]
 }
