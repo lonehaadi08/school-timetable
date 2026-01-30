@@ -1,7 +1,8 @@
 // CONFIGURATION
 // Use the 'Raw' link from your GitHub repo once you push the data.json file.
 // For now, during development, we fetch relative to the website root.
-const DATA_URL = './data.json'; 
+// This tells the website to fetch the data from your GitHub repository
+const DATA_URL = 'https://raw.githubusercontent.com/lonehaadi08/school-timetable/main/public/data.json'; 
 
 // STATE
 let timetableData = { daily: [], weekly: [] };
