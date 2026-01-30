@@ -1,12 +1,9 @@
 // CONFIGURATION
-// Use the 'Raw' link from your GitHub repo once you push the data.json file.
-// For now, during development, we fetch relative to the website root.
-// This tells the website to fetch the data from your GitHub repository
-const DATA_URL = 'https://raw.githubusercontent.com/lonehaadi08/school-timetable/main/public/data.json'; 
+const DATA_URL = 'https://raw.githubusercontent.com/lonehaadi08/school-timetable/main/public/data.json';
 
 // STATE
 let timetableData = { daily: [], weekly: [] };
-let currentView = 'daily'; // 'daily' or 'weekly'
+let currentView = 'daily'; 
 
 const els = {
     input: document.getElementById('batchInput'),
@@ -20,9 +17,7 @@ const els = {
 // 1. INIT
 async function init() {
     els.status.textContent = "Fetching schedule...";
-    
     try {
-        // Fetch with cache-busting timestamp to ensure fresh data on reload
         const response = await fetch(`${DATA_URL}?t=${new Date().getTime()}`);
         if (!response.ok) throw new Error("Failed to load data");
         
@@ -31,87 +26,114 @@ async function init() {
         
         els.status.textContent = "Ready";
         if(json.metadata && json.metadata.last_updated) {
-            els.lastUpdated.textContent = `Last updated: ${json.metadata.last_updated}`;
+            // Format the update time nicely
+            const date = new Date(json.metadata.last_updated.replace(" ", "T"));
+            els.lastUpdated.textContent = `Last updated: ${date.toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'})}`;
         }
 
-        // Restore previous search if exists
         const savedBatch = localStorage.getItem('lastBatch');
         if (savedBatch) {
             els.input.value = savedBatch;
             renderResults(savedBatch);
         }
-
     } catch (error) {
         console.error(error);
-        els.status.textContent = "⚠️ Error loading timetable. Please refresh.";
-        els.status.style.color = "red";
+        els.status.textContent = "⚠️ Error loading data. Refresh page.";
     }
 }
 
-// 2. EVENT LISTENERS
+// 2. EVENTS
 els.input.addEventListener('input', (e) => {
     const query = e.target.value.trim();
-    localStorage.setItem('lastBatch', query); // Save user preference
+    localStorage.setItem('lastBatch', query);
     renderResults(query);
 });
 
-// 3. CORE LOGIC
+// 3. LOGIC
 function switchView(view) {
     currentView = view;
-    
-    // Toggle Buttons
     els.btnDaily.classList.toggle('active', view === 'daily');
     els.btnWeekly.classList.toggle('active', view === 'weekly');
-    
-    // Re-render with current input
     renderResults(els.input.value.trim());
 }
 
 function renderResults(query) {
     if (!query) {
-        els.results.innerHTML = `<div class="empty-state">Type your batch code to see results.</div>`;
+        els.results.innerHTML = `<div class="empty-state">Enter your batch code to see the schedule.</div>`;
         return;
     }
 
     const dataSet = currentView === 'daily' ? timetableData.daily : timetableData.weekly;
-    
-    // Filter Data: Case-insensitive search on ALL fields (safer if column names change)
-    const matches = dataSet.filter(row => {
-        // Combine all values in the row into a single string for searching
-        const rowString = Object.values(row).join(' ').toLowerCase();
-        return rowString.includes(query.toLowerCase());
-    });
+    if (!dataSet) return;
 
-    // Update UI
+    // Filter by Batch Name
+    const matches = dataSet.filter(item => 
+        item['Batch'].toLowerCase().includes(query.toLowerCase())
+    );
+
     if (matches.length === 0) {
-        els.results.innerHTML = `<div class="empty-state">No classes found for "${query}" in ${currentView} view.</div>`;
+        els.results.innerHTML = `<div class="empty-state">No batch found for "${query}"</div>`;
     } else {
         els.results.innerHTML = matches.map(item => createCard(item)).join('');
     }
 }
 
 function createCard(item) {
-    // We try to intelligently find the columns based on likely names in your CSV
-    // Adjust keys ('Subject', 'Time', 'Room') based on your actual CSV headers
-    const subject = item['Subject'] || item['Class'] || 'Unknown Class';
-    const time = item['Time'] || item['Period'] || '';
-    const teacher = item['Teacher'] || item['Faculty'] || '';
-    const room = item['Room'] || item['Link'] || '';
-    const day = item['Day'] || '';
+    const batchName = item['Batch'];
+    
+    // Group headers by Date
+    // Keys look like: "31 Jan - 9:00 AM" or "Room (31 Jan)"
+    const scheduleByDate = {};
+
+    Object.keys(item).forEach(key => {
+        if (key === "Batch") return;
+
+        // Extract Date from key (text between parenthesis or before dash)
+        let dateKey = "Other";
+        let info = key;
+
+        if (key.includes('(')) {
+            // Format: "Room (31 Jan)"
+            const match = key.match(/\((.*?)\)/);
+            if (match) dateKey = match[1];
+            info = key.split('(')[0].trim();
+        } else if (key.includes('-')) {
+            // Format: "31 Jan - 9:00 AM"
+            const parts = key.split('-');
+            dateKey = parts[0].trim();
+            info = parts[1].trim();
+        }
+
+        if (!scheduleByDate[dateKey]) scheduleByDate[dateKey] = [];
+        scheduleByDate[dateKey].push({ label: info, value: item[key] });
+    });
+
+    // Build HTML
+    let datesHtml = '';
+    for (const [date, classes] of Object.entries(scheduleByDate)) {
+        const classRows = classes.map(c => `
+            <div class="class-row">
+                <span class="class-time">${c.label}</span>
+                <span class="class-name">${c.value}</span>
+            </div>
+        `).join('');
+
+        datesHtml += `
+            <div class="date-group">
+                <div class="date-header">📅 ${date}</div>
+                ${classRows}
+            </div>
+        `;
+    }
 
     return `
         <div class="schedule-card">
-            <div class="card-header">
-                <span>${day} ${time}</span>
-                <span>${room}</span>
+            <div class="card-header-main">
+                <span class="batch-tag">${batchName}</span>
             </div>
-            <div class="card-subject">${subject}</div>
-            <div class="card-details">
-                ${teacher ? `👤 ${teacher}` : ''}
-            </div>
+            ${datesHtml || '<div class="empty-state" style="padding:10px; font-size:0.9rem">No classes scheduled for this week.</div>'}
         </div>
     `;
 }
 
-// Start
 init();
