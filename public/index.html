@@ -1,0 +1,47 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Student Timetable Portal</title>
+    <meta name="description" content="Fast, reliable daily and weekly schedules for students.">
+    <link rel="stylesheet" href="style.css">
+    <link rel="preconnect" href="https://raw.githubusercontent.com">
+</head>
+<body>
+
+    <header class="app-header">
+        <div class="container">
+            <h1>Student Portal</h1>
+            <p class="subtitle">Check your classes instantly</p>
+        </div>
+    </header>
+
+    <main class="container">
+        <section class="search-section">
+            <div class="search-wrapper">
+                <input type="text" id="batchInput" placeholder="Enter your Batch Code (e.g., A1, B2)..." autocomplete="off">
+                <span class="search-icon">🔍</span>
+            </div>
+            <p id="statusMsg" class="status-msg">Loading latest data...</p>
+        </section>
+
+        <div class="view-controls">
+            <button id="btnDaily" class="tab-btn active" onclick="switchView('daily')">Daily Schedule</button>
+            <button id="btnWeekly" class="tab-btn" onclick="switchView('weekly')">Weekly Plan</button>
+        </div>
+
+        <div id="resultsArea" class="results-grid">
+            <div class="empty-state">
+                Type your batch code above to see your schedule.
+            </div>
+        </div>
+    </main>
+
+    <footer class="app-footer">
+        <p>Data updates automatically. <br> <span id="lastUpdated"></span></p>
+    </footer>
+
+    <script src="script.js"></script>
+</body>
+</html>
