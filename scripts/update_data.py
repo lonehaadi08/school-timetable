@@ -2,13 +2,18 @@ import csv
 import json
 import requests
 import io
+import os  # <--- Make sure this is imported
 
 # 1. Configuration
-# These links use the 'export?format=csv' trick to get raw data
 DAILY_SHEET_URL = "https://docs.google.com/spreadsheets/d/e/2PACX-1vRbgw-2QiguaDpy7rl9AZUQxtPV3T55TDseLAHBQE3z7ef0niqrasuil7Bg0V-KDzvBLCTfb5BnH-7Z/pub?gid=1952632243&single=true&output=csv"
 WEEKLY_SHEET_URL = "https://docs.google.com/spreadsheets/d/e/2PACX-1vRbgw-2QiguaDpy7rl9AZUQxtPV3T55TDseLAHBQE3z7ef0niqrasuil7Bg0V-KDzvBLCTfb5BnH-7Z/pub?gid=0&single=true&output=csv"
 
-OUTPUT_FILE = "../public/data.json"
+# ROBUST PATH HANDLING
+# This finds the directory where this script lives, then goes up one level to 'public'
+BASE_DIR = os.path.dirname(os.path.abspath(__file__))
+OUTPUT_FILE = os.path.join(BASE_DIR, "..", "public", "data.json")
+
+# ... rest of your code ...
 
 def fetch_csv_as_dict(url):
     print(f"Fetching data from... {url[:60]}...")
