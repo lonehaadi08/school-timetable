@@ -3,42 +3,42 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>Student Schedule</title>
-    <meta name="theme-color" content="#ffffff">
+    <title>Student Portal</title>
     <link rel="stylesheet" href="style.css">
-    <link rel="icon" href="data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22><text y=%22.9em%22 font-size=%2290%22>📅</text></svg>">
 </head>
 <body>
 
-    <div class="app-layout">
-        <header class="sticky-header">
-            <div class="logo-area">
-                <h1>📅 Timetable</h1>
-                <div class="live-indicator">
-                    <span class="dot"></span>
-                    <span id="lastUpdated">Updating...</span>
+    <div class="bg-animation">
+        <div class="blob b1"></div>
+        <div class="blob b2"></div>
+        <div class="blob b3"></div>
+    </div>
+
+    <div class="glass-container">
+        <header class="app-header">
+            <div class="header-top">
+                <div class="brand">
+                    <span class="icon">✨</span>
+                    <h1>Timetable</h1>
                 </div>
+                <div class="status-badge" id="lastUpdated">Offline</div>
             </div>
 
-            <div class="search-container">
-                <div class="input-group">
-                    <span class="search-icon">🔍</span>
-                    <input type="text" id="batchInput" placeholder="Enter Batch (e.g. RF28X)" autocomplete="off">
-                    <button id="clearSearch" class="hidden" aria-label="Clear search">✕</button>
-                </div>
+            <div class="search-box">
+                <input type="text" id="batchInput" placeholder="Search your batch..." autocomplete="off">
+                <button id="clearSearch" class="hidden">✕</button>
             </div>
 
-            <div class="tabs">
-                <button id="btnDaily" class="tab active" onclick="switchView('daily')">Daily</button>
-                <button id="btnWeekly" class="tab" onclick="switchView('weekly')">Weekly</button>
+            <div class="nav-pills">
+                <button id="btnDaily" class="pill active" onclick="switchView('daily')">Daily View</button>
+                <button id="btnWeekly" class="pill" onclick="switchView('weekly')">Weekly Plan</button>
             </div>
         </header>
 
-        <main id="resultsArea" class="content-area">
-            <div class="empty-state-hero">
-                <div class="illustration">🎓</div>
-                <h2>Welcome Back</h2>
-                <p>Enter your batch code above to see your classes.</p>
+        <main id="resultsArea" class="content-scroll">
+            <div class="welcome-msg">
+                <h2>👋 Hello!</h2>
+                <p>Start typing your batch code to see the magic.</p>
             </div>
         </main>
     </div>

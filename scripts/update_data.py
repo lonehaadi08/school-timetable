@@ -1,7 +1,6 @@
 import csv
 import json
 import requests
-import io
 import os
 import datetime
 import re
@@ -14,25 +13,15 @@ BASE_DIR = os.path.dirname(os.path.abspath(__file__))
 OUTPUT_FILE = os.path.join(BASE_DIR, "..", "public", "data.json")
 
 def parse_date(date_str):
-    """ Parses dates like "31 Jan, Sat" """
     if not date_str or not isinstance(date_str, str): return None
     clean_str = re.sub(r'(Mon|Tue|Wed|Thu|Fri|Sat|Sun)', '', date_str, flags=re.IGNORECASE).strip()
     clean_str = clean_str.rstrip(',').strip()
-    
     try:
         current_year = datetime.datetime.now().year
-        # Handle "31 Jan" -> Date object
         dt = datetime.datetime.strptime(f"{clean_str} {current_year}", "%d %b %Y").date()
         return dt
     except ValueError:
         return None
-
-def is_date_relevant(date_obj):
-    """ Keep data from -2 days (yesterday) to +10 days (next week) """
-    if not date_obj: return False
-    today = datetime.date.today()
-    delta = (date_obj - today).days
-    return -2 <= delta <= 10
 
 def fetch_data(url, sheet_name, date_row_idx):
     print(f"\n--- Fetching {sheet_name} ---")
@@ -44,41 +33,43 @@ def fetch_data(url, sheet_name, date_row_idx):
         all_rows = list(reader)
 
         if len(all_rows) < date_row_idx + 2:
-            print("❌ Sheet is empty or too short.")
             return []
 
-        # 1. LOCATE ROWS
-        # Date Row is where "31 Jan" lives
-        # Time Row is strictly the one immediately below it
         date_row = all_rows[date_row_idx]
         time_row = all_rows[date_row_idx + 1]
         
-        # 2. IDENTIFY RELEVANT COLUMNS
-        relevant_indices = {0} # Always keep Batch column (Col 0)
+        # 1. FIND RELEVANT COLUMNS (Logic: Next 20 Valid Columns)
+        relevant_indices = {0} # Always keep Batch
+        column_count = 0
+        MAX_COLUMNS = 20 # User requested 20 columns
+        
         current_active_date = None
         
         for i, cell in enumerate(date_row):
-            if i == 0: continue # Skip Batch col
+            if i == 0: continue 
             
-            # Check for date
             parsed = parse_date(cell)
             if parsed:
-                if is_date_relevant(parsed):
-                    current_active_date = parsed
-                    relevant_indices.add(i)
+                # Allow dates from yesterday onwards
+                if parsed >= (datetime.date.today() - datetime.timedelta(days=1)):
+                    if column_count < MAX_COLUMNS:
+                        current_active_date = parsed
+                        relevant_indices.add(i)
+                        column_count += 1
+                    else:
+                        current_active_date = None # Limit reached
                 else:
-                    current_active_date = None
+                    current_active_date = None # Old date
             
-            # If inside a valid date block, keep columns with time/room info
+            # Keep timeslots under the active date
             elif current_active_date and i < len(time_row) and time_row[i].strip():
                 relevant_indices.add(i)
 
         sorted_indices = sorted(list(relevant_indices))
         
-        # 3. BUILD CLEAN HEADERS
+        # 2. BUILD HEADERS
         final_headers = []
         last_date_str = ""
-        
         for i in sorted_indices:
             if i == 0:
                 final_headers.append("Batch")
@@ -88,28 +79,21 @@ def fetch_data(url, sheet_name, date_row_idx):
                 last_date_str = date_row[i].strip()
             
             time_label = time_row[i].strip()
-            # Clean up label
-            if "Room" in time_label:
-                # E.g., "Room (31 Jan)"
+            if "Room" in time_label or "Doubt" in time_label:
                 final_headers.append(f"{time_label} ({last_date_str})")
             else:
-                # E.g., "31 Jan - 9:00 AM"
                 final_headers.append(f"{last_date_str} - {time_label}")
 
-        print(f"   ℹ️ Keeping {len(final_headers)} columns.")
+        print(f"   ℹ️ Keeping {len(final_headers)} columns (Top 20 logic).")
 
-        # 4. EXTRACT DATA
+        # 3. EXTRACT DATA
         data = []
-        # Batches start immediately after the Time Row
         start_row = date_row_idx + 2
-        
         for row in all_rows[start_row:]:
             if not row or not row[0].strip(): continue
-            
             entry = {}
             has_data = False
-            
-            entry["Batch"] = row[0].strip() # Col 0 is forced as Batch
+            entry["Batch"] = row[0].strip()
             
             for idx, header_name in zip(sorted_indices[1:], final_headers[1:]):
                 if idx < len(row) and row[idx].strip():
@@ -119,19 +103,15 @@ def fetch_data(url, sheet_name, date_row_idx):
             if has_data:
                 data.append(entry)
 
-        print(f"✅ Extracted {len(data)} active batches.")
         return data
 
     except Exception as e:
-        print(f"❌ Error in {sheet_name}: {e}")
+        print(f"❌ Error: {e}")
         return []
 
 def main():
-    # DAILY sheet: Dates are in Row 0
-    daily = fetch_data(DAILY_SHEET_URL, "Daily", date_row_idx=0)
-    
-    # WEEKLY sheet: Dates are in Row 1 (based on your raw data logs)
-    weekly = fetch_data(WEEKLY_SHEET_URL, "Weekly", date_row_idx=1)
+    daily = fetch_data(DAILY_SHEET_URL, "Daily", 0)
+    weekly = fetch_data(WEEKLY_SHEET_URL, "Weekly", 1)
 
     full_db = {
         "metadata": {"last_updated": str(datetime.datetime.now())},
