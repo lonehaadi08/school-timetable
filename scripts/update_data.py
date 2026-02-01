@@ -14,10 +14,13 @@ OUTPUT_FILE = os.path.join(BASE_DIR, "..", "public", "data.json")
 
 def parse_date(date_str):
     if not date_str or not isinstance(date_str, str): return None
+    # Remove day names (Mon, Tue...) to parse strictly the date part
     clean_str = re.sub(r'(Mon|Tue|Wed|Thu|Fri|Sat|Sun)', '', date_str, flags=re.IGNORECASE).strip()
     clean_str = clean_str.rstrip(',').strip()
+    
     try:
         current_year = datetime.datetime.now().year
+        # Parse "31 Jan" -> Date object
         dt = datetime.datetime.strptime(f"{clean_str} {current_year}", "%d %b %Y").date()
         return dt
     except ValueError:
@@ -38,36 +41,40 @@ def fetch_data(url, sheet_name, date_row_idx):
         date_row = all_rows[date_row_idx]
         time_row = all_rows[date_row_idx + 1]
         
-        # 1. FIND RELEVANT COLUMNS (Logic: Next 20 Valid Columns)
-        relevant_indices = {0} # Always keep Batch
-        column_count = 0
-        MAX_COLUMNS = 20 # User requested 20 columns
+        # --- LOGIC FIX: CAPTURE MORE WEEKS ---
+        relevant_indices = {0} # Always keep Batch column
+        found_dates = []
+        
+        # Configuration: How many days of data do you want?
+        # 21 columns = Approx 3 weeks of data
+        DESIRED_DAYS_COUNT = 25 
         
         current_active_date = None
-        
+        yesterday = datetime.date.today() - datetime.timedelta(days=1)
+
         for i, cell in enumerate(date_row):
             if i == 0: continue 
             
             parsed = parse_date(cell)
             if parsed:
-                # Allow dates from yesterday onwards
-                if parsed >= (datetime.date.today() - datetime.timedelta(days=1)):
-                    if column_count < MAX_COLUMNS:
+                # If this date is in the future (or yesterday), we want it
+                if parsed >= yesterday:
+                    if len(found_dates) < DESIRED_DAYS_COUNT:
                         current_active_date = parsed
                         relevant_indices.add(i)
-                        column_count += 1
+                        found_dates.append(parsed)
                     else:
-                        current_active_date = None # Limit reached
+                        current_active_date = None # Stop collecting after limit
                 else:
-                    current_active_date = None # Old date
+                    current_active_date = None # Too old
             
-            # Keep timeslots under the active date
+            # If we are "under" a valid date (handling merged cells or empty header cells)
             elif current_active_date and i < len(time_row) and time_row[i].strip():
                 relevant_indices.add(i)
 
         sorted_indices = sorted(list(relevant_indices))
         
-        # 2. BUILD HEADERS
+        # Build Headers
         final_headers = []
         last_date_str = ""
         for i in sorted_indices:
@@ -79,14 +86,15 @@ def fetch_data(url, sheet_name, date_row_idx):
                 last_date_str = date_row[i].strip()
             
             time_label = time_row[i].strip()
+            # Construct key: "31 Jan - 9:00 AM"
             if "Room" in time_label or "Doubt" in time_label:
                 final_headers.append(f"{time_label} ({last_date_str})")
             else:
                 final_headers.append(f"{last_date_str} - {time_label}")
 
-        print(f"   ℹ️ Keeping {len(final_headers)} columns (Top 20 logic).")
+        print(f"   ℹ️ Keeping {len(found_dates)} distinct days of schedule.")
 
-        # 3. EXTRACT DATA
+        # Extract Data
         data = []
         start_row = date_row_idx + 2
         for row in all_rows[start_row:]:
