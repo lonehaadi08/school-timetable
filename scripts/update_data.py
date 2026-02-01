@@ -19,9 +19,18 @@ def parse_date(date_str):
     clean_str = clean_str.rstrip(',').strip()
     
     try:
-        current_year = datetime.datetime.now().year
-        # Parse "31 Jan" -> Date object
+        now = datetime.datetime.now()
+        current_year = now.year
+        
+        # Parse "31 Jan" -> Date object with current year first
         dt = datetime.datetime.strptime(f"{clean_str} {current_year}", "%d %b %Y").date()
+        
+        # SMART YEAR FIX:
+        # If we are in Jan 2026, and the sheet says "Dec", it likely means Dec 2025 (History).
+        # Logic: If the date is more than 6 months in the future, assume it belongs to last year.
+        if (dt - now.date()).days > 180:
+            dt = dt.replace(year=current_year - 1)
+        
         return dt
     except ValueError:
         return None
@@ -41,24 +50,25 @@ def fetch_data(url, sheet_name, date_row_idx):
         date_row = all_rows[date_row_idx]
         time_row = all_rows[date_row_idx + 1]
         
-        # --- LOGIC: CAPTURE NEXT 30 DAYS ---
+        # --- LOGIC: FETCH HISTORY + FUTURE (200 Columns) ---
         relevant_indices = {0} # Always keep Batch column
         found_dates = []
         
-        # Configuration: 30 days covers about 4 weeks
-        DESIRED_DAYS_COUNT = 30 
+        DESIRED_DAYS_COUNT = 200  # Requested limit
+        HISTORY_DAYS = 35         # How far back to look (1 month + buffer)
         
         current_active_date = None
-        # Start looking from 2 days ago to be safe
-        yesterday = datetime.date.today() - datetime.timedelta(days=2)
+        
+        # Start looking from 35 days ago
+        start_date = datetime.date.today() - datetime.timedelta(days=HISTORY_DAYS)
 
         for i, cell in enumerate(date_row):
             if i == 0: continue 
             
             parsed = parse_date(cell)
             if parsed:
-                # If this date is in the future (or recent past), we want it
-                if parsed >= yesterday:
+                # If date is newer than our history limit (e.g. newer than Dec 25)
+                if parsed >= start_date:
                     if len(found_dates) < DESIRED_DAYS_COUNT:
                         current_active_date = parsed
                         relevant_indices.add(i)
@@ -66,7 +76,7 @@ def fetch_data(url, sheet_name, date_row_idx):
                     else:
                         current_active_date = None # Stop collecting after limit
                 else:
-                    current_active_date = None # Too old
+                    current_active_date = None # Date is too old (older than 1 month)
             
             # If we are "under" a valid date (handling merged cells)
             elif current_active_date and i < len(time_row) and time_row[i].strip():
@@ -86,13 +96,12 @@ def fetch_data(url, sheet_name, date_row_idx):
                 last_date_str = date_row[i].strip()
             
             time_label = time_row[i].strip()
-            # Construct key: "31 Jan - 9:00 AM"
             if "Room" in time_label or "Doubt" in time_label:
                 final_headers.append(f"{time_label} ({last_date_str})")
             else:
                 final_headers.append(f"{last_date_str} - {time_label}")
 
-        print(f"   ℹ️ Keeping {len(found_dates)} distinct days of schedule.")
+        print(f"   ℹ️ Keeping {len(found_dates)} distinct days (History + Future).")
 
         # Extract Data
         data = []
