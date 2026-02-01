@@ -14,7 +14,7 @@ OUTPUT_FILE = os.path.join(BASE_DIR, "..", "public", "data.json")
 
 def parse_date(date_str):
     if not date_str or not isinstance(date_str, str): return None
-    # Remove day names (Mon, Tue...) to parse strictly the date part
+    # Remove day names to parse strictly the date part
     clean_str = re.sub(r'(Mon|Tue|Wed|Thu|Fri|Sat|Sun)', '', date_str, flags=re.IGNORECASE).strip()
     clean_str = clean_str.rstrip(',').strip()
     
@@ -41,23 +41,23 @@ def fetch_data(url, sheet_name, date_row_idx):
         date_row = all_rows[date_row_idx]
         time_row = all_rows[date_row_idx + 1]
         
-        # --- LOGIC FIX: CAPTURE MORE WEEKS ---
+        # --- LOGIC: CAPTURE NEXT 30 DAYS ---
         relevant_indices = {0} # Always keep Batch column
         found_dates = []
         
-        # Configuration: How many days of data do you want?
-        # 21 columns = Approx 3 weeks of data
-        DESIRED_DAYS_COUNT = 25 
+        # Configuration: 30 days covers about 4 weeks
+        DESIRED_DAYS_COUNT = 30 
         
         current_active_date = None
-        yesterday = datetime.date.today() - datetime.timedelta(days=1)
+        # Start looking from 2 days ago to be safe
+        yesterday = datetime.date.today() - datetime.timedelta(days=2)
 
         for i, cell in enumerate(date_row):
             if i == 0: continue 
             
             parsed = parse_date(cell)
             if parsed:
-                # If this date is in the future (or yesterday), we want it
+                # If this date is in the future (or recent past), we want it
                 if parsed >= yesterday:
                     if len(found_dates) < DESIRED_DAYS_COUNT:
                         current_active_date = parsed
@@ -68,7 +68,7 @@ def fetch_data(url, sheet_name, date_row_idx):
                 else:
                     current_active_date = None # Too old
             
-            # If we are "under" a valid date (handling merged cells or empty header cells)
+            # If we are "under" a valid date (handling merged cells)
             elif current_active_date and i < len(time_row) and time_row[i].strip():
                 relevant_indices.add(i)
 
