@@ -1,8 +1,8 @@
 // ==========================================
-// 1. FIREBASE SETUP & IMPORTS
+// 1. FIREBASE SETUP
 // ==========================================
 import { initializeApp } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-app.js";
-import { getAuth, createUserWithEmailAndPassword, signInWithEmailAndPassword, onAuthStateChanged, signOut } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-auth.js";
+import { getAuth, createUserWithEmailAndPassword, signInWithEmailAndPassword, GoogleAuthProvider, signInWithPopup, onAuthStateChanged, signOut, sendPasswordResetEmail } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-auth.js";
 import { getFirestore, doc, setDoc, getDoc } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore.js";
 
 const firebaseConfig = {
@@ -14,37 +14,34 @@ const firebaseConfig = {
   appId: "1:788359622246:web:0f89ad2600e95df13bc7a7"
 };
 
-// Initialize Firebase
 const app = initializeApp(firebaseConfig);
 const auth = getAuth(app);
 const db = getFirestore(app);
+const googleProvider = new GoogleAuthProvider();
 
-// Data URLs & State
+// Data & State
 const DATA_URL = 'https://raw.githubusercontent.com/lonehaadi08/school-timetable/main/public/data.json';
 let timetableData = { daily: [], weekly: [] };
 let currentUserProfile = null;
-let myScheduleTimeView = 'daily'; // 'daily' or 'weekly'
+let myScheduleTimeView = 'daily';
 
 // ==========================================
-// 2. AUTHENTICATION & UI TOGGLES
+// 2. UI NAVIGATION TOGGLES
 // ==========================================
-
-// Attach functions to window so HTML inline onclick handlers can find them
 window.toggleAuth = (view) => {
     document.getElementById('loginForm').classList.toggle('hidden', view !== 'login');
     document.getElementById('registerForm').classList.toggle('hidden', view !== 'register');
+    document.getElementById('resetForm').classList.toggle('hidden', view !== 'reset');
     hideErrors();
 };
 
-window.switchTab = (tabId) => {
+window.switchTab = (tabId, title) => {
     document.querySelectorAll('.tab-content').forEach(t => t.classList.add('hidden'));
-    document.querySelectorAll('.app-header .pill').forEach(p => p.classList.remove('active'));
+    document.querySelectorAll('.bottom-nav .nav-item').forEach(p => p.classList.remove('active'));
     
     document.getElementById(`tab${tabId.charAt(0).toUpperCase() + tabId.slice(1)}`).classList.remove('hidden');
-    
-    if(tabId === 'mySchedule') document.getElementById('navMySchedule').classList.add('active');
-    if(tabId === 'allBatches') document.getElementById('navAllBatches').classList.add('active');
-    if(tabId === 'teachers') document.getElementById('navTeachers').classList.add('active');
+    document.getElementById(`nav${tabId.charAt(0).toUpperCase() + tabId.slice(1)}`).classList.add('active');
+    document.getElementById('headerTitle').textContent = title;
 };
 
 window.switchTimeView = (view) => {
@@ -55,81 +52,114 @@ window.switchTimeView = (view) => {
 };
 
 function hideErrors() {
-    document.getElementById('loginError').classList.add('hidden');
-    document.getElementById('registerError').classList.add('hidden');
+    document.querySelectorAll('.error-msg').forEach(el => el.classList.add('hidden'));
+    document.getElementById('resetSuccess').classList.add('hidden');
 }
-function showError(formId, msg) {
-    const el = document.getElementById(formId);
+function showError(id, msg) {
+    const el = document.getElementById(id);
     el.textContent = msg;
     el.classList.remove('hidden');
 }
 
-// ---------------- Login ----------------
+// ==========================================
+// 3. AUTHENTICATION LOGIC
+// ==========================================
+
+// Email Login
 document.getElementById('loginForm').addEventListener('submit', async (e) => {
     e.preventDefault();
-    const email = document.getElementById('loginEmail').value;
-    const password = document.getElementById('loginPassword').value;
     try {
-        await signInWithEmailAndPassword(auth, email, password);
-        // onAuthStateChanged will handle the rest
-    } catch (error) {
-        showError('loginError', "Invalid email or password.");
-    }
+        await signInWithEmailAndPassword(auth, document.getElementById('loginEmail').value, document.getElementById('loginPassword').value);
+    } catch (error) { showError('loginError', "Invalid email or password."); }
 });
 
-// ---------------- Register ----------------
+// Email Register
 document.getElementById('registerForm').addEventListener('submit', async (e) => {
     e.preventDefault();
-    const name = document.getElementById('regName').value;
-    const stdClass = document.getElementById('regClass').value;
-    const batch = document.getElementById('regBatch').value.toUpperCase();
-    const email = document.getElementById('regEmail').value;
-    const password = document.getElementById('regPassword').value;
-
     try {
-        const userCredential = await createUserWithEmailAndPassword(auth, email, password);
-        const user = userCredential.user;
-        
-        // Save extra data to Firestore
-        await setDoc(doc(db, "users", user.uid), {
-            name: name,
-            studentClass: stdClass,
-            batch: batch,
-            email: email
+        const userCredential = await createUserWithEmailAndPassword(auth, document.getElementById('regEmail').value, document.getElementById('regPassword').value);
+        await setDoc(doc(db, "users", userCredential.user.uid), {
+            name: document.getElementById('regName').value,
+            studentClass: document.getElementById('regClass').value,
+            batch: document.getElementById('regBatch').value.toUpperCase(),
+            email: document.getElementById('regEmail').value
         });
-        // onAuthStateChanged will handle the rest
+    } catch (error) { showError('registerError', error.message.replace("Firebase: ", "")); }
+});
+
+// Password Reset
+document.getElementById('resetForm').addEventListener('submit', async (e) => {
+    e.preventDefault();
+    const email = document.getElementById('resetEmail').value;
+    hideErrors();
+    try {
+        await sendPasswordResetEmail(auth, email);
+        const successEl = document.getElementById('resetSuccess');
+        successEl.textContent = "Reset link sent! Please check your inbox.";
+        successEl.classList.remove('hidden');
+        document.getElementById('resetEmail').value = "";
     } catch (error) {
-        showError('registerError', error.message.replace("Firebase: ", ""));
+        let errorMsg = "Failed to send reset email.";
+        if (error.code === 'auth/invalid-email') errorMsg = "Please enter a valid email address.";
+        if (error.code === 'auth/user-not-found') errorMsg = "No account found with this email.";
+        showError('resetError', errorMsg);
     }
 });
 
-// ---------------- Logout ----------------
+// Google Sign-In
+document.getElementById('btnGoogleSignIn').addEventListener('click', async () => {
+    try {
+        await signInWithPopup(auth, googleProvider);
+    } catch (error) { showError('loginError', "Google sign-in failed."); }
+});
+
+// Complete Profile (New Google Users)
+document.getElementById('completeProfileForm').addEventListener('submit', async (e) => {
+    e.preventDefault();
+    const user = auth.currentUser;
+    if(user) {
+        await setDoc(doc(db, "users", user.uid), {
+            name: user.displayName || "Student",
+            email: user.email,
+            studentClass: document.getElementById('cpClass').value,
+            batch: document.getElementById('cpBatch').value.toUpperCase()
+        });
+        window.location.reload(); 
+    }
+});
+
+// Logout
 document.getElementById('logoutBtn').addEventListener('click', () => { signOut(auth); });
 
 // ==========================================
-// 3. APP INITIALIZATION (Once Logged In)
+// 4. APP INITIALIZATION & RTS SCANNER
 // ==========================================
 
 onAuthStateChanged(auth, async (user) => {
     if (user) {
-        // User is signed in
         document.getElementById('authView').classList.add('hidden');
-        document.getElementById('appView').classList.remove('hidden');
-        
-        // Fetch Profile
         const docSnap = await getDoc(doc(db, "users", user.uid));
+        
         if (docSnap.exists()) {
             currentUserProfile = docSnap.data();
-            document.getElementById('userNameDisplay').textContent = currentUserProfile.name.split(" ")[0]; // First name
-            document.getElementById('userBatchDisplay').textContent = currentUserProfile.batch;
-        }
+            
+            // Populate Profile
+            document.getElementById('profileName').textContent = currentUserProfile.name;
+            document.getElementById('profileEmail').textContent = currentUserProfile.email;
+            document.getElementById('profileBatch').textContent = currentUserProfile.batch;
+            document.getElementById('profileClass').textContent = currentUserProfile.studentClass;
 
-        // Fetch Timetable Data
-        await fetchTimetableData();
-        renderMySchedule();
+            document.getElementById('appView').classList.remove('hidden');
+            await fetchTimetableData();
+            renderMySchedule();
+            checkForRTS(); 
+        } else {
+            // New Google User
+            document.getElementById('completeProfileView').classList.remove('hidden');
+        }
     } else {
-        // User is signed out
         document.getElementById('appView').classList.add('hidden');
+        document.getElementById('completeProfileView').classList.add('hidden');
         document.getElementById('authView').classList.remove('hidden');
         currentUserProfile = null;
     }
@@ -137,56 +167,88 @@ onAuthStateChanged(auth, async (user) => {
 
 async function fetchTimetableData() {
     try {
-        const response = await fetch(`${DATA_URL}?t=${new Date().getTime()}`);
-        if (!response.ok) throw new Error("Network error");
-        timetableData = await response.json();
+        const res = await fetch(`${DATA_URL}?t=${new Date().getTime()}`);
+        timetableData = await res.json();
     } catch (e) {
-        console.error("Failed to load schedule data.");
-        document.getElementById('myScheduleResults').innerHTML = '<div class="error-msg">Failed to load schedule. Try again later.</div>';
+        document.getElementById('myScheduleResults').innerHTML = '<div class="error-msg" style="margin-top:20px;">Failed to load timetable.</div>';
+    }
+}
+
+// Personalized & Time-Aware RTS Checker
+function checkForRTS() {
+    if (!currentUserProfile) return;
+    const userBatch = currentUserProfile.batch;
+    const mySchedule = timetableData.weekly.find(b => String(b.Batch).toUpperCase() === userBatch);
+    
+    if (!mySchedule) return;
+
+    let rtsAlerts = [];
+    const now = new Date(); // Get current live time
+    const currentYear = now.getFullYear(); // Extract current year
+
+    Object.keys(mySchedule).forEach(key => {
+        const subject = String(mySchedule[key]).toUpperCase();
+        
+        if (subject.includes("RTS") && key !== "Batch") {
+            try {
+                // Parse the key (e.g., "31 Jan, Sat - 3:30 PM") into a real Date object
+                const parts = key.split('-');
+                if (parts.length >= 2) {
+                    const datePart = parts[0].split(',')[0].trim(); // Extracts "31 Jan"
+                    const timePart = parts.slice(1).join('-').trim(); // Extracts "3:30 PM"
+                    
+                    // Combine into a standard format: "31 Jan 2026 3:30 PM"
+                    const rtsDate = new Date(`${datePart} ${currentYear} ${timePart}`);
+                    
+                    // Only push to alerts if the test date is IN THE FUTURE
+                    if (rtsDate >= now) {
+                        rtsAlerts.push(key); 
+                    }
+                } else {
+                    // Fallback just in case the formatting is weird
+                    rtsAlerts.push(key);
+                }
+            } catch (e) {
+                console.error("Could not parse date for RTS alert");
+                rtsAlerts.push(key); // Fallback
+            }
+        }
+    });
+
+    // If there are future alerts, show the banner!
+    if (rtsAlerts.length > 0) {
+        document.getElementById('rtsAlert').classList.remove('hidden');
+        document.getElementById('rtsBatchTitle').textContent = `Upcoming Test (RTS) for ${userBatch}`;
+        document.getElementById('rtsTime').innerHTML = rtsAlerts.join('<br>'); 
+    } else {
+        // Ensure it stays hidden if tests have passed
+        document.getElementById('rtsAlert').classList.add('hidden');
     }
 }
 
 // ==========================================
-// 4. RENDERING LOGIC
+// 5. RENDERING LOGIC
 // ==========================================
 
-// Render User's Specific Schedule
 function renderMySchedule() {
     if (!currentUserProfile) return;
     const dataSet = myScheduleTimeView === 'daily' ? timetableData.daily : timetableData.weekly;
-    const userBatch = currentUserProfile.batch;
-    
-    const mySchedule = dataSet.find(b => String(b.Batch).toUpperCase() === userBatch);
+    const mySchedule = dataSet.find(b => String(b.Batch).toUpperCase() === currentUserProfile.batch);
     const container = document.getElementById('myScheduleResults');
 
-    if (!mySchedule) {
-        container.innerHTML = `<div class="welcome-msg">No classes found for batch <b>${userBatch}</b> in ${myScheduleTimeView} view.</div>`;
-    } else {
-        container.innerHTML = createCardHTML(mySchedule, 0);
-    }
+    if (!mySchedule) container.innerHTML = `<div class="welcome-msg">No classes scheduled.</div>`;
+    else container.innerHTML = createCardHTML(mySchedule, 0);
 }
 
-// Render Any Batch (Search)
 document.getElementById('batchInput').addEventListener('input', (e) => {
-    const query = e.target.value.trim().toLowerCase();
+    const q = e.target.value.trim().toLowerCase();
     const container = document.getElementById('allBatchesResults');
+    if (q.length < 2) return container.innerHTML = '<div class="welcome-msg">Start typing...</div>';
     
-    if (query.length < 2) {
-        container.innerHTML = '<div class="welcome-msg">Start typing a batch code...</div>';
-        return;
-    }
-
-    // Search in weekly data (usually contains everything)
-    const matches = timetableData.weekly.filter(item => String(item.Batch).toLowerCase().includes(query));
-    
-    if (matches.length === 0) {
-        container.innerHTML = `<div class="welcome-msg">No batches found matching "${query}"</div>`;
-    } else {
-        container.innerHTML = matches.map((m, i) => createCardHTML(m, i)).join('');
-    }
+    const matches = timetableData.weekly.filter(item => String(item.Batch).toLowerCase().includes(q));
+    container.innerHTML = matches.length ? matches.map((m, i) => createCardHTML(m, i)).join('') : `<div class="welcome-msg">No batches found.</div>`;
 });
 
-// HTML Generator for Cards (Adapted from your original logic)
 function createCardHTML(item, index) {
     const batchName = item['Batch'];
     const scheduleByDate = {};
@@ -206,10 +268,8 @@ function createCardHTML(item, index) {
         }
 
         if (!scheduleByDate[dateKey]) scheduleByDate[dateKey] = {};
-        
-        if (info.toLowerCase().includes('room')) {
-            scheduleByDate[dateKey].room = item[key];
-        } else {
+        if (info.toLowerCase().includes('room')) scheduleByDate[dateKey].room = item[key];
+        else {
             if (!scheduleByDate[dateKey].classes) scheduleByDate[dateKey].classes = [];
             scheduleByDate[dateKey].classes.push({ time: info, subject: item[key] });
         }
@@ -226,95 +286,41 @@ function createCardHTML(item, index) {
                 ${roomBadge} 
             </div>
         `).join('');
-
         datesHtml += `<div class="date-group"><div class="date-header">📅 ${date}</div>${rows}</div>`;
     }
-
-    return `
-        <div class="schedule-card" style="animation-delay: ${index * 0.05}s">
-            <div class="card-header-strip"><div class="batch-tag">${batchName}</div></div>
-            <div class="card-body">
-                ${datesHtml || '<div style="padding:10px; color:#94a3b8; font-size:0.9rem">No classes.</div>'}
-            </div>
-        </div>
-    `;
+    return `<div class="schedule-card" style="animation-delay: ${index * 0.05}s"><div class="card-header-strip"><div class="batch-tag">${batchName}</div></div><div class="card-body">${datesHtml || '<div style="padding:10px; color:var(--text-light); font-size:0.9rem">No classes.</div>'}</div></div>`;
 }
 
-// ==========================================
-// 5. TEACHER AVAILABILITY ENGINE
-// ==========================================
-
+// Teacher Search
 document.getElementById('teacherInput').addEventListener('input', (e) => {
-    const query = e.target.value.trim().toUpperCase();
+    const q = e.target.value.trim().toUpperCase();
     const container = document.getElementById('teacherResults');
+    if (q.length < 2) return container.innerHTML = '<div class="welcome-msg">Search teacher code (e.g., FR)...</div>';
 
-    if (query.length < 2) {
-        container.innerHTML = '<div class="welcome-msg">Search a teacher code (e.g., FR) to see their schedule.</div>';
-        return;
-    }
-
-    let busySlots = []; // Array to hold { batch, time, subject, date }
-
-    // Scan through all weekly data to find where this teacher is mentioned
-    timetableData.weekly.forEach(batchData => {
-        const batchName = batchData.Batch;
-        
-        Object.keys(batchData).forEach(key => {
+    let busySlots = [];
+    timetableData.weekly.forEach(batch => {
+        Object.keys(batch).forEach(key => {
             if (key === "Batch" || key.toLowerCase().includes("room")) return;
-            
-            const subjectData = batchData[key]; // e.g., "Che(FR)" or "Che(FR)@10:00"
-            
-            // Check if the teacher code is in the subject string
-            if (typeof subjectData === 'string' && subjectData.toUpperCase().includes(`(${query})`)) {
-                // Extract date/time from the key (e.g., "31 Jan, Sat - 9:00 AM")
+            if (typeof batch[key] === 'string' && batch[key].toUpperCase().includes(`(${q})`)) {
                 let dateStr = "Scheduled", timeStr = key;
                 if (key.includes('-')) {
                     const parts = key.split('-');
-                    dateStr = parts[0].trim();
-                    timeStr = parts.slice(1).join('-').trim();
+                    dateStr = parts[0].trim(); timeStr = parts.slice(1).join('-').trim();
                 }
-                
-                busySlots.push({
-                    batch: batchName,
-                    date: dateStr,
-                    time: timeStr,
-                    subject: subjectData
-                });
+                busySlots.push({ batch: batch.Batch, date: dateStr, time: timeStr, subject: batch[key] });
             }
         });
     });
 
-    if (busySlots.length === 0) {
-        container.innerHTML = `<div class="teacher-free-card">✅ Teacher <b>${query}</b> currently has no assigned classes in the schedule.</div>`;
-    } else {
-        // Group busy slots by Date
-        const groupedByDate = {};
-        busySlots.forEach(slot => {
-            if (!groupedByDate[slot.date]) groupedByDate[slot.date] = [];
-            groupedByDate[slot.date].push(slot);
-        });
-
-        let html = `<div style="margin-bottom: 15px; color:#334155; font-weight:600;">Schedule for Teacher: ${query}</div>`;
-        
-        for (const [date, slots] of Object.entries(groupedByDate)) {
-            const rows = slots.map(s => `
-                <div class="class-row">
-                    <span class="time">${s.time}</span>
-                    <span class="subject">${s.batch}</span>
-                    <span class="room" style="background:#e0f2fe; color:#0369a1;">${s.subject}</span>
-                </div>
-            `).join('');
-
-            html += `
-                <div class="schedule-card">
-                    <div class="card-body" style="padding-top:10px;">
-                        <div class="date-group">
-                            <div class="date-header">📅 ${date}</div>
-                            ${rows}
-                        </div>
-                    </div>
-                </div>`;
-        }
-        container.innerHTML = html;
+    if (!busySlots.length) return container.innerHTML = `<div class="teacher-free-card">✅ Teacher <b>${q}</b> is currently free in the schedule.</div>`;
+    
+    const grouped = {};
+    busySlots.forEach(s => { if (!grouped[s.date]) grouped[s.date] = []; grouped[s.date].push(s); });
+    
+    let html = `<div style="margin-bottom: 15px; font-weight:600; color: var(--hunter-green);">Schedule for: ${q}</div>`;
+    for (const [date, slots] of Object.entries(grouped)) {
+        const rows = slots.map(s => `<div class="class-row"><span class="time">${s.time}</span><span class="subject">${s.batch}</span><span class="room" style="background:var(--vanilla-cream); color:var(--hunter-green); border-color:var(--yellow-green);">${s.subject}</span></div>`).join('');
+        html += `<div class="schedule-card"><div class="card-body"><div class="date-group"><div class="date-header">📅 ${date}</div>${rows}</div></div></div>`;
     }
+    container.innerHTML = html;
 });

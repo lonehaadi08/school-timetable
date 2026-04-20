@@ -2,12 +2,14 @@
 <html lang="en">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
     <title>Student Portal</title>
+    <link rel="manifest" href="manifest.json">
+    <meta name="theme-color" content="#386641">
+    <link rel="apple-touch-icon" href="icon-192.png">
     <link rel="stylesheet" href="style.css">
 </head>
 <body>
-
     <div class="bg-animation"></div>
 
     <div class="glass-container">
@@ -20,8 +22,18 @@
 
             <form id="loginForm" class="auth-form">
                 <h2>Welcome Back!</h2>
+                <button type="button" id="btnGoogleSignIn" class="btn-google">
+                    <img src="https://www.gstatic.com/firebasejs/ui/2.0.0/images/auth/google.svg" alt="Google"> Continue with Google
+                </button>
+                <div class="divider"><span>OR</span></div>
+                
                 <input type="email" id="loginEmail" placeholder="Email" required>
                 <input type="password" id="loginPassword" placeholder="Password" required>
+                
+                <div style="text-align: right; margin-top: -10px;">
+                    <span class="text-link" onclick="toggleAuth('reset')">Forgot Password?</span>
+                </div>
+
                 <button type="submit" class="btn-primary">Login</button>
                 <p class="switch-auth">Don't have an account? <span onclick="toggleAuth('register')">Sign Up</span></p>
                 <div id="loginError" class="error-msg hidden"></div>
@@ -30,7 +42,7 @@
             <form id="registerForm" class="auth-form hidden">
                 <h2>Create Account</h2>
                 <input type="text" id="regName" placeholder="Full Name" required>
-                <input type="text" id="regClass" placeholder="Class (e.g., 11th, 12th, Dropper)" required>
+                <input type="text" id="regClass" placeholder="Class (e.g., 11th, 12th)" required>
                 <input type="text" id="regBatch" placeholder="Batch Code (e.g., RB26X)" required>
                 <input type="email" id="regEmail" placeholder="Email" required>
                 <input type="password" id="regPassword" placeholder="Password (min 6 chars)" required>
@@ -38,61 +50,122 @@
                 <p class="switch-auth">Already have an account? <span onclick="toggleAuth('login')">Login</span></p>
                 <div id="registerError" class="error-msg hidden"></div>
             </form>
+
+            <form id="resetForm" class="auth-form hidden">
+                <h2>Reset Password</h2>
+                <p class="sub-text">Enter your email and we will send you a reset link.</p>
+                <input type="email" id="resetEmail" placeholder="Enter your email" required>
+                <button type="submit" class="btn-primary">Send Reset Link</button>
+                <p class="switch-auth"><span onclick="toggleAuth('login')">Back to Login</span></p>
+                <div id="resetError" class="error-msg hidden"></div>
+                <div id="resetSuccess" class="success-msg hidden"></div>
+            </form>
+        </div>
+
+        <div id="completeProfileView" class="auth-wrapper hidden">
+            <form id="completeProfileForm" class="auth-form">
+                <h2>Just One More Step!</h2>
+                <p class="sub-text">We need your class details to fetch your schedule.</p>
+                <input type="text" id="cpClass" placeholder="Class (e.g., 11th, 12th)" required>
+                <input type="text" id="cpBatch" placeholder="Batch Code (e.g., RB26X)" required>
+                <button type="submit" class="btn-primary">Finish Setup</button>
+            </form>
         </div>
 
         <div id="appView" class="app-wrapper hidden">
+            
             <header class="app-header">
-                <div class="header-top">
-                    <div class="user-profile">
-                        <span class="icon">👤</span>
-                        <div>
-                            <h1 id="userNameDisplay">Loading...</h1>
-                            <span class="status-badge" id="userBatchDisplay">Batch</span>
-                        </div>
-                    </div>
-                    <button id="logoutBtn" class="btn-icon" title="Logout">🚪</button>
-                </div>
-
-                <div class="nav-pills">
-                    <button id="navMySchedule" class="pill active" onclick="switchTab('mySchedule')">My Schedule</button>
-                    <button id="navAllBatches" class="pill" onclick="switchTab('allBatches')">All Batches</button>
-                    <button id="navTeachers" class="pill" onclick="switchTab('teachers')">Teachers</button>
+                <div class="brand">
+                    <span class="icon">✨</span>
+                    <h1 id="headerTitle">My Schedule</h1>
                 </div>
             </header>
 
-            <main class="content-scroll">
+            <div id="rtsAlert" class="rts-banner hidden">
+                <span class="rts-icon">🚨</span>
+                <div class="rts-text">
+                    <strong id="rtsBatchTitle">Upcoming Test (RTS)</strong>
+                    <div id="rtsTime">Loading...</div>
+                </div>
+            </div>
+
+            <main class="content-scroll pb-nav">
                 
-                <div id="tabMySchedule" class="tab-content">
-                    <div class="view-toggles" style="margin-bottom: 15px; display:flex; gap:10px;">
+                <div id="tabMySchedule" class="tab-content fade-in">
+                    <div class="view-toggles">
                         <button class="pill active" id="btnDailyMy" onclick="switchTimeView('daily')">Daily View</button>
                         <button class="pill" id="btnWeeklyMy" onclick="switchTimeView('weekly')">Weekly Plan</button>
                     </div>
                     <div id="myScheduleResults">Loading your timetable...</div>
                 </div>
 
-                <div id="tabAllBatches" class="tab-content hidden">
+                <div id="tabAllBatches" class="tab-content hidden fade-in">
                     <div class="search-box">
                         <input type="text" id="batchInput" placeholder="Search any batch..." autocomplete="off">
                     </div>
-                    <div id="allBatchesResults">
-                        <div class="welcome-msg">Start typing a batch code.</div>
-                    </div>
+                    <div id="allBatchesResults"><div class="welcome-msg">Start typing a batch code.</div></div>
                 </div>
 
-                <div id="tabTeachers" class="tab-content hidden">
+                <div id="tabTeachers" class="tab-content hidden fade-in">
                     <div class="search-box">
-                        <input type="text" id="teacherInput" placeholder="Enter Teacher Code (e.g., FR, NS)..." autocomplete="off" maxlength="3">
+                        <input type="text" id="teacherInput" placeholder="Enter Teacher Code (e.g., FR)..." autocomplete="off" maxlength="3">
                     </div>
-                    <div id="teacherResults">
-                        <div class="welcome-msg">Search a teacher to see their schedule.</div>
+                    <div id="teacherResults"><div class="welcome-msg">Search a teacher to see their schedule.</div></div>
+                </div>
+
+                <div id="tabProfile" class="tab-content hidden fade-in">
+                    <div class="profile-card">
+                        <div class="profile-avatar">👤</div>
+                        <h2 id="profileName">Loading...</h2>
+                        <p id="profileEmail" class="profile-email">loading@email.com</p>
+                        
+                        <div class="profile-details">
+                            <div class="detail-item">
+                                <span>Batch</span>
+                                <strong id="profileBatch">...</strong>
+                            </div>
+                            <div class="detail-item">
+                                <span>Class</span>
+                                <strong id="profileClass">...</strong>
+                            </div>
+                        </div>
+
+                        <button id="logoutBtn" class="btn-logout">Logout</button>
                     </div>
                 </div>
 
             </main>
+
+            <nav class="bottom-nav">
+                <button class="nav-item active" id="navMySchedule" onclick="switchTab('mySchedule', 'My Schedule')">
+                    <span class="nav-icon">📅</span>
+                    <span>Schedule</span>
+                </button>
+                <button class="nav-item" id="navAllBatches" onclick="switchTab('allBatches', 'All Batches')">
+                    <span class="nav-icon">🔍</span>
+                    <span>Search</span>
+                </button>
+                <button class="nav-item" id="navTeachers" onclick="switchTab('teachers', 'Teachers')">
+                    <span class="nav-icon">👨‍🏫</span>
+                    <span>Teachers</span>
+                </button>
+                <button class="nav-item" id="navProfile" onclick="switchTab('profile', 'My Profile')">
+                    <span class="nav-icon">👤</span>
+                    <span>Profile</span>
+                </button>
+            </nav>
         </div>
-
     </div>
-
     <script type="module" src="script.js"></script>
+    <script>
+        // Register the Service Worker
+        if ('serviceWorker' in navigator) {
+            window.addEventListener('load', () => {
+                navigator.serviceWorker.register('/sw.js')
+                    .then(registration => console.log('ServiceWorker registered'))
+                    .catch(err => console.log('ServiceWorker registration failed: ', err));
+            });
+        }
+    </script>
 </body>
 </html>
