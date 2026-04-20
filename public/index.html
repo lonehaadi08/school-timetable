@@ -8,41 +8,91 @@
 </head>
 <body>
 
-    <div class="bg-animation">
-        <div class="blob b1"></div>
-        <div class="blob b2"></div>
-        <div class="blob b3"></div>
-    </div>
+    <div class="bg-animation"></div>
 
     <div class="glass-container">
-        <header class="app-header">
-            <div class="header-top">
-                <div class="brand">
-                    <span class="icon">✨</span>
-                    <h1>Timetable</h1>
+        
+        <div id="authView" class="auth-wrapper">
+            <div class="brand auth-brand">
+                <span class="icon">✨</span>
+                <h1>Student Portal</h1>
+            </div>
+
+            <form id="loginForm" class="auth-form">
+                <h2>Welcome Back!</h2>
+                <input type="email" id="loginEmail" placeholder="Email" required>
+                <input type="password" id="loginPassword" placeholder="Password" required>
+                <button type="submit" class="btn-primary">Login</button>
+                <p class="switch-auth">Don't have an account? <span onclick="toggleAuth('register')">Sign Up</span></p>
+                <div id="loginError" class="error-msg hidden"></div>
+            </form>
+
+            <form id="registerForm" class="auth-form hidden">
+                <h2>Create Account</h2>
+                <input type="text" id="regName" placeholder="Full Name" required>
+                <input type="text" id="regClass" placeholder="Class (e.g., 11th, 12th, Dropper)" required>
+                <input type="text" id="regBatch" placeholder="Batch Code (e.g., RB26X)" required>
+                <input type="email" id="regEmail" placeholder="Email" required>
+                <input type="password" id="regPassword" placeholder="Password (min 6 chars)" required>
+                <button type="submit" class="btn-primary">Register</button>
+                <p class="switch-auth">Already have an account? <span onclick="toggleAuth('login')">Login</span></p>
+                <div id="registerError" class="error-msg hidden"></div>
+            </form>
+        </div>
+
+        <div id="appView" class="app-wrapper hidden">
+            <header class="app-header">
+                <div class="header-top">
+                    <div class="user-profile">
+                        <span class="icon">👤</span>
+                        <div>
+                            <h1 id="userNameDisplay">Loading...</h1>
+                            <span class="status-badge" id="userBatchDisplay">Batch</span>
+                        </div>
+                    </div>
+                    <button id="logoutBtn" class="btn-icon" title="Logout">🚪</button>
                 </div>
-                <div class="status-badge" id="lastUpdated">Offline</div>
-            </div>
 
-            <div class="search-box">
-                <input type="text" id="batchInput" placeholder="Search your batch..." autocomplete="off">
-                <button id="clearSearch" class="hidden">✕</button>
-            </div>
+                <div class="nav-pills">
+                    <button id="navMySchedule" class="pill active" onclick="switchTab('mySchedule')">My Schedule</button>
+                    <button id="navAllBatches" class="pill" onclick="switchTab('allBatches')">All Batches</button>
+                    <button id="navTeachers" class="pill" onclick="switchTab('teachers')">Teachers</button>
+                </div>
+            </header>
 
-            <div class="nav-pills">
-                <button id="btnDaily" class="pill active" onclick="switchView('daily')">Daily View</button>
-                <button id="btnWeekly" class="pill" onclick="switchView('weekly')">Weekly Plan</button>
-            </div>
-        </header>
+            <main class="content-scroll">
+                
+                <div id="tabMySchedule" class="tab-content">
+                    <div class="view-toggles" style="margin-bottom: 15px; display:flex; gap:10px;">
+                        <button class="pill active" id="btnDailyMy" onclick="switchTimeView('daily')">Daily View</button>
+                        <button class="pill" id="btnWeeklyMy" onclick="switchTimeView('weekly')">Weekly Plan</button>
+                    </div>
+                    <div id="myScheduleResults">Loading your timetable...</div>
+                </div>
 
-        <main id="resultsArea" class="content-scroll">
-            <div class="welcome-msg">
-                <h2>👋 Hello!</h2>
-                <p>Start typing your batch code to see the magic.</p>
-            </div>
-        </main>
+                <div id="tabAllBatches" class="tab-content hidden">
+                    <div class="search-box">
+                        <input type="text" id="batchInput" placeholder="Search any batch..." autocomplete="off">
+                    </div>
+                    <div id="allBatchesResults">
+                        <div class="welcome-msg">Start typing a batch code.</div>
+                    </div>
+                </div>
+
+                <div id="tabTeachers" class="tab-content hidden">
+                    <div class="search-box">
+                        <input type="text" id="teacherInput" placeholder="Enter Teacher Code (e.g., FR, NS)..." autocomplete="off" maxlength="3">
+                    </div>
+                    <div id="teacherResults">
+                        <div class="welcome-msg">Search a teacher to see their schedule.</div>
+                    </div>
+                </div>
+
+            </main>
+        </div>
+
     </div>
 
-    <script src="script.js"></script>
+    <script type="module" src="script.js"></script>
 </body>
 </html>
