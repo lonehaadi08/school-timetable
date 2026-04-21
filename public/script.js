@@ -1,5 +1,5 @@
 // ==========================================
-// 1. FIREBASE, EMAILJS, CAPACITOR & AI SETUP
+// 1. FIREBASE, EMAILJS, CAPACITOR & API SETUP
 // ==========================================
 import { initializeApp } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-app.js";
 import { getAuth, createUserWithEmailAndPassword, signInWithEmailAndPassword, GoogleAuthProvider, signInWithPopup, onAuthStateChanged, signOut, sendPasswordResetEmail } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-auth.js";
@@ -26,9 +26,8 @@ const DEFAULT_AVATAR = "data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/
 emailjs.init("eV9GmBZdy2ByqSZmw");
 const IMGBB_API_KEY = "d7a0fd403ed8a561aab9d2b6d2961e9d";
 const GEMINI_API_KEY = "AIzaSyAtuXIxgecoRWauk71Fb6uEgDPNFCXXGgs";
+const GROQ_API_KEY = "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"; // Your Groq Fallback Key!
 const DATA_URL = 'https://raw.githubusercontent.com/lonehaadi08/school-timetable/main/public/data.json';
-
-if (window.dayjs_plugin_customParseFormat) dayjs.extend(window.dayjs_plugin_customParseFormat);
 
 let timetableData = { daily: [], weekly: [] };
 let currentUserProfile = null;
@@ -41,7 +40,40 @@ let aiConversationHistory = [];
 let currentTeacherContext = "";
 
 // ==========================================
-// 2. UI UTILITIES & PROFILE LIVE EDITS
+// 2. DUAL-ENGINE AI FALLBACK SYSTEM
+// ==========================================
+async function generateAIResponse(prompt, isChat = false, history = []) {
+    // 1. Try Gemini 1.5 Flash First
+    let geminiContents = isChat ? history : [{ role: "user", parts: [{ text: prompt }] }];
+    try {
+        const geminiRes = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${GEMINI_API_KEY}`, {
+            method: "POST", headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ contents: geminiContents, generationConfig: { temperature: 0.4 } })
+        });
+        const geminiData = await geminiRes.json();
+        if (geminiRes.ok && geminiData.candidates) return geminiData.candidates[0].content.parts[0].text;
+        console.warn("Gemini Quota/Error:", geminiData.error);
+    } catch (e) { console.warn("Gemini Network Error:", e); }
+
+    // 2. Fallback to Groq Llama 3
+    try {
+        let groqMessages = isChat 
+            ? history.map(h => ({ role: h.role === "model" ? "assistant" : "user", content: h.parts[0].text })) 
+            : [{ role: "user", content: prompt }];
+
+        const groqRes = await fetch("https://api.groq.com/openai/v1/chat/completions", {
+            method: "POST",
+            headers: { "Authorization": `Bearer ${GROQ_API_KEY}`, "Content-Type": "application/json" },
+            body: JSON.stringify({ model: "llama3-8b-8192", messages: groqMessages, temperature: 0.4 })
+        });
+        const groqData = await groqRes.json();
+        if (groqRes.ok && groqData.choices) return groqData.choices[0].message.content;
+        throw new Error(groqData.error?.message || "Both AI engines failed.");
+    } catch (e) { throw e; }
+}
+
+// ==========================================
+// 3. UI UTILITIES & PROFILE LIVE EDITS
 // ==========================================
 window.toggleAuth = (view) => {
     document.getElementById('loginForm').classList.toggle('hidden', view !== 'login');
@@ -93,7 +125,8 @@ window.forceRefreshApp = async () => {
 window.downloadPDF = (elementId, filename) => {
     const element = document.getElementById(elementId);
     if(element.innerText.includes("Start typing") || element.innerText.includes("Loading") || element.innerText.includes("❌")) return alert("Search for valid data first before exporting to PDF!");
-    const opt = { margin: 0.5, filename: `${filename}_${dayjs().format('DD-MMM-YYYY')}.pdf`, image: { type: 'jpeg', quality: 0.98 }, html2canvas: { scale: 2, useCORS: true, allowTaint: true }, jsPDF: { unit: 'in', format: 'letter', orientation: 'portrait' } };
+    const dateStr = new Date().toLocaleDateString().replace(/\//g, '-');
+    const opt = { margin: 0.5, filename: `${filename}_${dateStr}.pdf`, image: { type: 'jpeg', quality: 0.98 }, html2canvas: { scale: 2, useCORS: true, allowTaint: true }, jsPDF: { unit: 'in', format: 'letter', orientation: 'portrait' } };
     html2pdf().set(opt).from(element).save();
 };
 
@@ -147,7 +180,7 @@ window.removeProfilePic = async () => {
 };
 
 // ==========================================
-// 3. OTP REGISTRATION & AUTH
+// 4. OTP REGISTRATION & AUTH
 // ==========================================
 document.getElementById('registerForm').addEventListener('submit', async (e) => {
     e.preventDefault(); hideErrors(); const btn = document.getElementById('btnTriggerOTP'); btn.textContent = "Sending OTP..."; btn.disabled = true;
@@ -181,7 +214,7 @@ document.getElementById('completeProfileForm').addEventListener('submit', async 
 });
 
 // ==========================================
-// 4. APP INIT
+// 5. APP INIT
 // ==========================================
 onAuthStateChanged(auth, async (user) => {
     const loader = document.getElementById('initialLoader'); const authView = document.getElementById('authView');
@@ -215,11 +248,15 @@ async function checkForRTS() {
             try {
                 const parts = key.split('-'); if (parts.length >= 2) {
                     const datePart = parts[0].split(',')[0].trim(); const timePart = parts.slice(1).join('-').trim();
-                    const rtsDate = new Date(`${datePart} ${currentYear} ${timePart}`);
-                    if (rtsDate >= now) {
-                        rtsAlerts.push(key);
-                        if (LocalNotifications) { const alarmTime = new Date(rtsDate.getTime() - (60 * 60 * 1000)); if(alarmTime > now) LocalNotifications.schedule({ notifications: [{ title: `🚨 Upcoming Test: ${subject}`, body: `Your RTS test starts in 1 hour at ${timePart}!`, id: rtsDate.getTime(), schedule: { at: alarmTime }, sound: null }] }); }
-                    } 
+                    let tempDate = new Date(`${datePart} ${currentYear}`);
+                    if (!isNaN(tempDate)) {
+                        if (tempDate.getMonth() > now.getMonth() + 2) tempDate.setFullYear(currentYear - 1);
+                        const rtsDate = new Date(`${tempDate.toDateString()} ${timePart}`);
+                        if (rtsDate >= now) {
+                            rtsAlerts.push(key);
+                            if (LocalNotifications) { const alarmTime = new Date(rtsDate.getTime() - (60 * 60 * 1000)); if(alarmTime > now) LocalNotifications.schedule({ notifications: [{ title: `🚨 Upcoming Test: ${subject}`, body: `Your RTS test starts in 1 hour at ${timePart}!`, id: rtsDate.getTime(), schedule: { at: alarmTime }, sound: null }] }); }
+                        } 
+                    }
                 } else rtsAlerts.push(key);
             } catch (e) { rtsAlerts.push(key); }
         }
@@ -228,7 +265,7 @@ async function checkForRTS() {
 }
 
 // ==========================================
-// 5. ALL BATCHES SEARCH (Allows Date Search!)
+// 6. ALL BATCHES SEARCH
 // ==========================================
 function renderMySchedule() {
     if (!currentUserProfile) return;
@@ -242,7 +279,6 @@ document.getElementById('batchInput').addEventListener('input', (e) => {
     const q = e.target.value.trim().toLowerCase(); const container = document.getElementById('allBatchesResults');
     if (q.length < 2) return container.innerHTML = '<div class="welcome-msg">Start typing a batch code or date (e.g. 21 Apr)...</div>';
     
-    // Allows searching by Batch Code OR Date inside the Batch Keys
     const matches = timetableData.weekly.filter(item => {
         if(String(item.Batch).toLowerCase().includes(q)) return true;
         return Object.keys(item).some(k => k.toLowerCase().includes(q));
@@ -270,11 +306,12 @@ function createCardHTML(item, index) {
 }
 
 // ==========================================
-// 6. ULTIMATE TIMELINE & AI EXPERT
+// 7. BULLETPROOF TIMELINE & AI EXPERT
 // ==========================================
+let aiDebounceTimer = null;
+
 document.getElementById('teacherInput').addEventListener('input', (e) => {
     const rawInput = e.target.value.trim().toUpperCase(); 
-    // Relaxed Regex: Now allows letters, numbers, and spaces so you can search "21 Apr" or "FN"
     const q = rawInput.replace(/[^A-Z0-9\s]/g, ''); 
     const container = document.getElementById('teacherResults'); 
     const aiBox = document.getElementById('aiSummaryBox'); 
@@ -284,9 +321,10 @@ document.getElementById('teacherInput').addEventListener('input', (e) => {
     if (q.length < 2) return container.innerHTML = '<div class="welcome-msg">Search teacher code or date (e.g., FN, 21 Apr)...</div>';
 
     let rawSlots = []; 
-    const now = dayjs(); const currentYear = now.year(); 
-    const maxPast = now.subtract(14, 'day').startOf('day');
-    const maxFuture = now.add(7, 'day').endOf('day');
+    const now = new Date(); const currentYear = now.getFullYear(); 
+
+    const maxPast = new Date(); maxPast.setDate(now.getDate() - 14);
+    const maxFuture = new Date(); maxFuture.setDate(now.getDate() + 7);
 
     const searchRegex = new RegExp(`(^|[^a-zA-Z0-9])${q.replace(/\s+/g, '\\s*')}([^a-zA-Z0-9]|$)`, 'i');
     
@@ -300,33 +338,34 @@ document.getElementById('teacherInput').addEventListener('input', (e) => {
             if (key === "Batch" || key === "_source" || key.toLowerCase().includes("room")) return;
             const cellValue = String(batch[key]).toUpperCase();
             
-            // Search matches EITHER the Subject (Teacher Code) OR the Key (Date string)
             if (searchRegex.test(cellValue) || searchRegex.test(key.toUpperCase())) {
-                let dateStr = "Unknown", timeStr = key, isToday = false; let slotDate = null;
+                let dateStr = "Unknown", timeStr = key, isToday = false; 
+                let slotDate = null;
 
                 if (key.includes('-') && key.match(/\d{1,2}\s[A-Za-z]{3}/)) {
                     const parts = key.split('-'); dateStr = parts[0].trim(); timeStr = parts.slice(1).join('-').trim();
                     const cleanDateStr = dateStr.split(',')[0].trim(); 
-                    let parsedDate = dayjs(`${cleanDateStr} ${currentYear}`, ["D MMM YYYY", "DD MMM YYYY"]);
-                    if (parsedDate.isValid()) {
-                        if (parsedDate.isAfter(now.add(2, 'month'))) parsedDate = parsedDate.subtract(1, 'year');
-                        slotDate = parsedDate;
+                    
+                    let tempDate = new Date(`${cleanDateStr} ${currentYear}`);
+                    if (!isNaN(tempDate)) {
+                        if (tempDate.getMonth() > now.getMonth() + 2) tempDate.setFullYear(currentYear - 1);
+                        slotDate = tempDate;
                     }
                 }
 
                 if (slotDate) {
-                    if (slotDate.isBefore(maxPast) || slotDate.isAfter(maxFuture)) return;
-                    if (slotDate.isSame(now, 'day')) isToday = true;
+                    if (slotDate < maxPast || slotDate > maxFuture) return;
+                    if (slotDate.toDateString() === now.toDateString()) isToday = true;
                 }
 
-                rawSlots.push({ batch: batch.Batch, date: dateStr, time: timeStr, subject: cellValue, source: batch._source, isToday: isToday, timestamp: slotDate ? slotDate.valueOf() : 0 });
+                rawSlots.push({ batch: batch.Batch, date: dateStr, time: timeStr, subject: cellValue, source: batch._source, isToday: isToday, timestamp: slotDate ? slotDate.getTime() : 0 });
             }
         });
     });
 
     if (!rawSlots.length) return container.innerHTML = `<div class="teacher-free-card" style="background:#fef2f2; border-color:#f87171; color:#991b1b;">❌ No classes found recently for <b>${q}</b>.</div>`;
 
-    // --- REMOVE CLUTTER: Merge identical Daily/Weekly slots ---
+    // Merge identical Daily/Weekly slots
     let busySlots = [];
     const groupedByTime = {};
     
@@ -336,37 +375,31 @@ document.getElementById('teacherInput').addEventListener('input', (e) => {
         groupedByTime[hash].push(s);
     });
 
-    // If Daily and Weekly match exactly, just show it normally. If Daily exists and is different, show "Changed".
     Object.values(groupedByTime).forEach(slotsArray => {
         const dailySlot = slotsArray.find(s => s.source === 'daily');
         const weeklySlot = slotsArray.find(s => s.source === 'weekly');
         
         if(dailySlot && weeklySlot) {
-            // Both exist. Don't show badge.
-            dailySlot.showBadge = false;
-            busySlots.push(dailySlot);
+            dailySlot.showBadge = false; busySlots.push(dailySlot);
         } else if (dailySlot) {
-            // Only Daily exists. It was added/rescheduled!
-            dailySlot.showBadge = true;
-            dailySlot.badgeType = 'changed';
-            busySlots.push(dailySlot);
+            dailySlot.showBadge = true; dailySlot.badgeType = 'changed'; busySlots.push(dailySlot);
         } else if (weeklySlot) {
-            // Only Weekly exists. It might be normal, or it might be cancelled if there's daily data for this batch elsewhere.
-            // To keep it simple and clean, just show it normally.
-            weeklySlot.showBadge = false;
-            busySlots.push(weeklySlot);
+            weeklySlot.showBadge = false; busySlots.push(weeklySlot);
         }
     });
 
-    // Section Grouping
     const todaySlots = []; const futureSlots = []; const pastSlots = [];
     busySlots.forEach(s => {
         if(s.isToday) todaySlots.push(s);
-        else if (dayjs(s.timestamp).isAfter(now)) futureSlots.push(s);
+        else if (s.timestamp > now.getTime()) futureSlots.push(s);
         else pastSlots.push(s);
     });
 
-    todaySlots.sort((a, b) => dayjs(`2000-01-01 ${a.time.split('-')[0].trim()}`, "YYYY-MM-DD h:mm A").valueOf() - dayjs(`2000-01-01 ${b.time.split('-')[0].trim()}`, "YYYY-MM-DD h:mm A").valueOf());
+    todaySlots.sort((a, b) => {
+        const timeA = a.time.includes('-') ? a.time.split('-')[0].trim() : a.time;
+        const timeB = b.time.includes('-') ? b.time.split('-')[0].trim() : b.time;
+        return new Date(`2000/01/01 ${timeA}`) - new Date(`2000/01/01 ${timeB}`);
+    });
     futureSlots.sort((a, b) => a.timestamp - b.timestamp);
     pastSlots.sort((a, b) => b.timestamp - a.timestamp);
 
@@ -397,42 +430,40 @@ document.getElementById('teacherInput').addEventListener('input', (e) => {
     
     container.innerHTML = html;
 
-    // --- GEMINI 2.5 SMART SUMMARY ---
+    // --- TRIGGER DUAL-ENGINE AI SUMMARY ---
     aiBox.classList.remove('hidden');
     aiText.innerHTML = `<span style="animation: pulse 1.5s infinite opacity;">AI analyzing schedule details...</span>`;
 
     aiDebounceTimer = setTimeout(async () => {
         try {
             const firstName = currentUserProfile ? currentUserProfile.name.split(' ')[0] : 'Student';
-            const prompt = `You are Gemini, a helpful school AI. The student's name is ${firstName}. Exact current time: ${new Date().toLocaleString()}.
+            const prompt = `You are a helpful school AI. The student's name is ${firstName}. Current time: ${new Date().toLocaleString()}.
 Analyze this specific schedule for '${q}':
 ${currentTeacherContext}
 
 INSTRUCTIONS:
 1. Greet the student by their first name.
 2. State how many classes are scheduled TODAY.
-3. If there are 'daily' source classes that differ from the norm, mention the schedule was updated.
-4. Be friendly, conversational, and helpful. Maximum 3 sentences. No asterisks.`;
+3. If there are 'daily' source classes that differ from the norm, mention the schedule was updated today. If not, don't mention source tags.
+4. Be friendly and conversational. Maximum 3 sentences. No markdown/asterisks.`;
 
-            const res = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=${GEMINI_API_KEY}`, {
-                method: "POST", headers: { "Content-Type": "application/json" },
-                body: JSON.stringify({ contents: [{ parts: [{ text: prompt }] }], generationConfig: { temperature: 0.4 } })
-            });
-            const data = await res.json();
-            if (data.error) { aiText.innerHTML = `<span style="color: #b91c1c;"><b>API Error:</b> ${data.error.message}</span>`; return; }
-            aiText.textContent = data.candidates[0].content.parts[0].text;
-        } catch(e) { aiText.innerHTML = `<span style="color: #b91c1c;">Failed to connect to Google AI.</span>`; }
+            const aiResponse = await generateAIResponse(prompt, false);
+            aiText.textContent = aiResponse.replace(/\*/g, '');
+        } catch(e) { 
+            console.error(e);
+            aiText.innerHTML = `<span style="color: #b91c1c;"><b>AI Error:</b> ${e.message}</span>`; 
+        }
     }, 1500); 
 });
 
 // ==========================================
-// GLOBAL AI CHAT ENGINE
+// 8. GLOBAL AI CHAT ENGINE
 // ==========================================
 window.openAIChat = (isGlobal = false) => {
     document.getElementById('aiChatWindow').classList.remove('hidden');
     const firstName = currentUserProfile ? currentUserProfile.name.split(' ')[0] : 'Student';
     
-    let sysContext = `System Context: You are Gemini 2.5, a highly intelligent school AI and general knowledge assistant. The student's name is ${firstName}. Current time is ${new Date().toLocaleString()}.\n`;
+    let sysContext = `System Context: You are a highly intelligent school AI and general knowledge assistant. The student's name is ${firstName}. Current time is ${new Date().toLocaleString()}.\n`;
     if(!isGlobal) sysContext += `The student is currently looking at this timetable data:\n${currentTeacherContext}\n`;
     sysContext += `Answer their questions helpfully. You can talk about the schedule, help with homework, or discuss general knowledge. Do not use markdown formatting.`;
 
@@ -441,7 +472,7 @@ window.openAIChat = (isGlobal = false) => {
         { role: "model", parts: [{ text: `Hello ${firstName}! How can I help you today?` }] }
     ];
     
-    document.getElementById('aiWelcomeMsg').textContent = `Hi ${firstName}! I am Gemini. You can ask me about schedules, homework, or general knowledge!`;
+    document.getElementById('aiWelcomeMsg').textContent = `Hi ${firstName}! You can ask me about schedules, homework, or general knowledge!`;
     document.getElementById('aiChatMessages').innerHTML = `<div class="msg-bubble msg-ai" id="aiWelcomeMsg">${document.getElementById('aiWelcomeMsg').textContent}</div>`;
 };
 
@@ -463,24 +494,18 @@ document.getElementById('aiChatInputForm').addEventListener('submit', async (e) 
     msgContainer.scrollTop = msgContainer.scrollHeight;
 
     try {
-        const res = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=${GEMINI_API_KEY}`, {
-            method: "POST", headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({ contents: aiConversationHistory, generationConfig: { temperature: 0.7 } })
-        });
-        const data = await res.json();
-        const aiResponse = data.candidates[0].content.parts[0].text;
+        const aiResponse = await generateAIResponse("", true, aiConversationHistory);
         
         document.getElementById(aiThinkingId).remove();
         msgContainer.innerHTML += `<div class="msg-bubble msg-ai">${aiResponse.replace(/\*/g, '')}</div>`;
         msgContainer.scrollTop = msgContainer.scrollHeight;
         
         aiConversationHistory.push({ role: "model", parts: [{ text: aiResponse }] });
-    } catch(e) { document.getElementById(aiThinkingId).textContent = "Sorry, I lost my connection to Google."; }
+    } catch(e) { document.getElementById(aiThinkingId).textContent = "Sorry, both primary and backup AI servers are down."; }
 });
 
-
 // ==========================================
-// 7. SOCIAL NETWORK ENGINE & CHAT CONTROLS
+// 9. SOCIAL NETWORK ENGINE & CHAT CONTROLS
 // ==========================================
 function initSocialEngine() {
     if(!auth.currentUser) return; const myUid = auth.currentUser.uid;
@@ -494,7 +519,6 @@ function initSocialEngine() {
             if (senderSnap.exists()) {
                 const s = senderSnap.data();
                 html += `<div class="user-card"><div class="user-card-info"><img src="${s.profilePic}" class="user-card-img"><div class="user-card-details"><h4>${s.name}</h4><p>Class: ${s.studentClass}</p></div></div><div style="display:flex; gap:5px;"><button class="btn-small" style="background:#ef4444;" onclick="rejectFriendRequest('${docSnap.id}')">✖</button><button class="btn-small" onclick="acceptFriendRequest('${docSnap.id}', '${reqData.senderId}', '${s.name}', '${s.profilePic}')">Accept</button></div></div>`;
-                
                 if (LocalNotifications && document.hidden) {
                     LocalNotifications.schedule({ notifications: [{ title: `New Friend Request`, body: `${s.name} sent you a request!`, id: Date.now() }] });
                 }
@@ -545,7 +569,6 @@ window.openChat = (friendId, friendName, friendPic) => {
             snapshot.docChanges().forEach(change => { 
                 if (change.type === 'added' && change.doc.data().senderId !== myUid) { 
                     const audio = document.getElementById('msgSound'); if(audio) audio.play().catch(e=>{}); 
-                    // NATIVE PUSH NOTIFICATION IF APP IS BACKGROUNDED
                     if (LocalNotifications && document.hidden) {
                         LocalNotifications.schedule({ notifications: [{ title: `Message from ${friendName}`, body: change.doc.data().text, id: Date.now() }] });
                     }
@@ -568,20 +591,11 @@ window.deleteMessage = async (msgId) => { if(!currentChatFriendId || !confirm("D
 window.clearChat = async () => {
     if(!currentChatFriendId || !confirm("Clear entire chat history?")) return;
     const myUid = auth.currentUser.uid; const chatId = myUid < currentChatFriendId ? `${myUid}_${currentChatFriendId}` : `${currentChatFriendId}_${myUid}`;
-    try {
-        const q = query(collection(db, "chats", chatId, "messages"));
-        const snapshot = await getDocs(q);
-        snapshot.forEach(d => deleteDoc(doc(db, "chats", chatId, "messages", d.id)));
-    } catch(e) { alert("Failed to clear chat"); }
+    try { const q = query(collection(db, "chats", chatId, "messages")); const snapshot = await getDocs(q); snapshot.forEach(d => deleteDoc(doc(db, "chats", chatId, "messages", d.id))); } catch(e) {}
 };
 
 window.removeFriend = async () => {
     if(!currentChatFriendId || !confirm("Unfriend this person and delete chat?")) return;
     const myUid = auth.currentUser.uid;
-    try {
-        await deleteDoc(doc(db, "users", myUid, "friends", currentChatFriendId));
-        await deleteDoc(doc(db, "users", currentChatFriendId, "friends", myUid));
-        window.clearChat();
-        window.closeChat();
-    } catch(e) { alert("Failed to remove friend"); }
+    try { await deleteDoc(doc(db, "users", myUid, "friends", currentChatFriendId)); await deleteDoc(doc(db, "users", currentChatFriendId, "friends", myUid)); window.clearChat(); window.closeChat(); } catch(e) { }
 };
