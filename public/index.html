@@ -4,10 +4,8 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
     <title>Student Portal</title>
-    <link rel="manifest" href="manifest.json">
-    <meta name="theme-color" content="#386641">
-    <link rel="apple-touch-icon" href="icon-192.png">
     <link rel="stylesheet" href="style.css">
+    <script type="text/javascript" src="https://cdn.jsdelivr.net/npm/@emailjs/browser@3/dist/email.min.js"></script>
 </head>
 <body>
     <div class="bg-animation"></div>
@@ -39,14 +37,45 @@
                 <div id="loginError" class="error-msg hidden"></div>
             </form>
 
-            <form id="registerForm" class="auth-form hidden">
+            <form id="registerForm" class="auth-form hidden content-scroll" style="max-height: 80vh; overflow-y: auto;">
                 <h2>Create Account</h2>
+                
+                <label class="file-upload-container">
+                    <input type="file" id="regProfilePic" accept="image/*" class="hidden-file-input">
+                    <div class="file-upload-btn">📷 Choose Profile Picture</div>
+                    <div id="fileNameDisplay" class="file-name">No file chosen</div>
+                </label>
+
                 <input type="text" id="regName" placeholder="Full Name" required>
-                <input type="text" id="regClass" placeholder="Class (e.g., 11th, 12th)" required>
+                <input type="tel" id="regPhone" placeholder="Phone Number (e.g., 9876543210)" required>
+                <input type="email" id="regEmail" placeholder="Email Address" required>
+                
+                <div style="display: flex; gap: 10px;">
+                    <select id="regClass" required>
+                        <option value="" disabled selected>Select Class</option>
+                        <option value="8th">8th</option>
+                        <option value="9th">9th</option>
+                        <option value="10th">10th</option>
+                        <option value="11th">11th</option>
+                        <option value="12th">12th</option>
+                        <option value="Dropper">Dropper</option>
+                    </select>
+
+                    <select id="regAim" required>
+                        <option value="" disabled selected>Select Aim</option>
+                        <option value="NEET">NEET</option>
+                        <option value="JEE">JEE</option>
+                        <option value="Foundation">Foundation</option>
+                    </select>
+                </div>
+
                 <input type="text" id="regBatch" placeholder="Batch Code (e.g., RB26X)" required>
-                <input type="email" id="regEmail" placeholder="Email" required>
+                
+                <textarea id="regAbout" placeholder="Short bio about yourself..." rows="2"></textarea>
+                
                 <input type="password" id="regPassword" placeholder="Password (min 6 chars)" required>
-                <button type="submit" class="btn-primary">Register</button>
+                
+                <button type="submit" class="btn-primary" id="btnTriggerOTP">Send OTP</button>
                 <p class="switch-auth">Already have an account? <span onclick="toggleAuth('login')">Login</span></p>
                 <div id="registerError" class="error-msg hidden"></div>
             </form>
@@ -62,18 +91,46 @@
             </form>
         </div>
 
+        <div id="otpView" class="auth-wrapper hidden">
+            <form id="otpForm" class="auth-form">
+                <h2>Verify Email</h2>
+                <p class="sub-text">We sent a 6-digit code to <b id="otpEmailDisplay"></b></p>
+                
+                <input type="text" id="otpInput" placeholder="Enter 6-digit OTP" maxlength="6" style="text-align: center; font-size: 1.5rem; letter-spacing: 10px; font-weight: bold;" required>
+                
+                <button type="submit" class="btn-primary" id="btnVerifyOTP">Verify & Create Account</button>
+                <p class="switch-auth"><span onclick="cancelRegistration()">Cancel</span></p>
+                <div id="otpError" class="error-msg hidden"></div>
+                <div id="otpLoading" class="sub-text hidden" style="color: var(--sage-green); font-weight: bold;">Setting up your profile, please wait...</div>
+            </form>
+        </div>
+
         <div id="completeProfileView" class="auth-wrapper hidden">
             <form id="completeProfileForm" class="auth-form">
                 <h2>Just One More Step!</h2>
-                <p class="sub-text">We need your class details to fetch your schedule.</p>
-                <input type="text" id="cpClass" placeholder="Class (e.g., 11th, 12th)" required>
+                <p class="sub-text">We need a few details to fetch your schedule.</p>
+                <select id="cpClass" required>
+                    <option value="" disabled selected>Select Class</option>
+                    <option value="8th">8th</option>
+                    <option value="9th">9th</option>
+                    <option value="10th">10th</option>
+                    <option value="11th">11th</option>
+                    <option value="12th">12th</option>
+                    <option value="Dropper">Dropper</option>
+                </select>
+                <select id="cpAim" required>
+                    <option value="" disabled selected>Select Aim</option>
+                    <option value="NEET">NEET</option>
+                    <option value="JEE">JEE</option>
+                    <option value="Foundation">Foundation</option>
+                </select>
                 <input type="text" id="cpBatch" placeholder="Batch Code (e.g., RB26X)" required>
+                <input type="tel" id="cpPhone" placeholder="Phone Number" required>
                 <button type="submit" class="btn-primary">Finish Setup</button>
             </form>
         </div>
 
         <div id="appView" class="app-wrapper hidden">
-            
             <header class="app-header">
                 <div class="brand">
                     <span class="icon">✨</span>
@@ -113,11 +170,32 @@
                     <div id="teacherResults"><div class="welcome-msg">Search a teacher to see their schedule.</div></div>
                 </div>
 
+                <div id="tabSocial" class="tab-content hidden fade-in">
+                    <div class="search-box" style="display:flex; gap:10px;">
+                        <input type="tel" id="socialSearchInput" placeholder="Search 10-digit Phone No." maxlength="10">
+                        <button class="btn-primary" id="btnSearchUsers" style="padding: 10px 15px;">🔍</button>
+                    </div>
+                    <div id="socialSearchResults"></div>
+
+                    <div id="friendRequestsArea" class="hidden" style="margin-top: 20px;">
+                        <h3 style="font-size: 1rem; color: var(--hunter-green); margin-bottom: 10px;">Friend Requests</h3>
+                        <div id="friendRequestsList"></div>
+                    </div>
+
+                    <div style="margin-top: 20px;">
+                        <h3 style="font-size: 1rem; color: var(--hunter-green); margin-bottom: 10px;">My Friends</h3>
+                        <div id="friendsList"><div class="sub-text">No friends yet. Search someone to connect!</div></div>
+                    </div>
+                </div>
+
                 <div id="tabProfile" class="tab-content hidden fade-in">
                     <div class="profile-card">
-                        <div class="profile-avatar">👤</div>
+                        <div class="profile-avatar">
+                            <img id="profileImage" src="https://i.ibb.co/7XqX7q8/default-avatar.png" alt="Profile" style="width:100px; height:100px; border-radius:50%; object-fit:cover; border: 3px solid var(--sage-green);">
+                        </div>
                         <h2 id="profileName">Loading...</h2>
                         <p id="profileEmail" class="profile-email">loading@email.com</p>
+                        <p id="profileAbout" style="font-size: 0.85rem; color: var(--text-light); margin-top:-15px; margin-bottom:15px; font-style: italic;"></p>
                         
                         <div class="profile-details">
                             <div class="detail-item">
@@ -125,8 +203,8 @@
                                 <strong id="profileBatch">...</strong>
                             </div>
                             <div class="detail-item">
-                                <span>Class</span>
-                                <strong id="profileClass">...</strong>
+                                <span>Aim</span>
+                                <strong id="profileAim">...</strong>
                             </div>
                         </div>
 
@@ -149,23 +227,31 @@
                     <span class="nav-icon">👨‍🏫</span>
                     <span>Teachers</span>
                 </button>
+                <button class="nav-item" id="navSocial" onclick="switchTab('social', 'Connect')">
+                    <span class="nav-icon">💬</span>
+                    <span>Social</span>
+                </button>
                 <button class="nav-item" id="navProfile" onclick="switchTab('profile', 'My Profile')">
                     <span class="nav-icon">👤</span>
                     <span>Profile</span>
                 </button>
             </nav>
         </div>
+
+        <div id="chatWindow" class="chat-overlay hidden">
+            <div class="chat-header">
+                <button class="btn-icon" onclick="closeChat()" style="background:transparent; color:white; border:none; font-size:1.5rem; cursor:pointer;">⬅️</button>
+                <img id="chatHeaderImg" src="" alt="">
+                <h3 id="chatHeaderName" style="color: white; margin:0;">Friend</h3>
+            </div>
+            <div id="chatMessages" class="chat-messages content-scroll"></div>
+            <form id="chatInputForm" class="chat-input-area">
+                <input type="text" id="chatMessageInput" placeholder="Type a message..." required autocomplete="off">
+                <button type="submit" class="btn-primary" style="padding: 10px 15px; border-radius: 50%;">✈️</button>
+            </form>
+        </div>
+
     </div>
     <script type="module" src="script.js"></script>
-    <script>
-        // Register the Service Worker
-        if ('serviceWorker' in navigator) {
-            window.addEventListener('load', () => {
-                navigator.serviceWorker.register('/sw.js')
-                    .then(registration => console.log('ServiceWorker registered'))
-                    .catch(err => console.log('ServiceWorker registration failed: ', err));
-            });
-        }
-    </script>
 </body>
 </html>

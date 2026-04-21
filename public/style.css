@@ -7,7 +7,7 @@
     --blushed-brick: #bc4749ff;
 
     /* Functional Colors derived from palette */
-    --text-main: #2b3a2f; /* Deep dark green for readable text */
+    --text-main: #2b3a2f; 
     --text-light: #526b58;
     --glass-bg: rgba(255, 255, 255, 0.85);
     --card-shadow: 0 8px 32px rgba(56, 102, 65, 0.08);
@@ -58,14 +58,28 @@ body {
 .auth-form h2 { text-align: center; color: var(--hunter-green); font-size: 1.4rem; }
 .sub-text { text-align: center; color: var(--text-light); font-size: 0.9rem; margin-bottom: 5px; }
 
-.auth-form input, .search-box input {
+.auth-form input, .search-box input, .auth-form select, .auth-form textarea {
     padding: 14px 20px; border-radius: 12px; border: 1px solid rgba(167, 201, 87, 0.5);
     font-size: 1rem; background: #fafaf5; transition: 0.2s; color: var(--text-main);
+    width: 100%; outline: none;
 }
-.auth-form input:focus, .search-box input:focus { 
-    border-color: var(--sage-green); outline: none; background: white;
+.auth-form select { appearance: none; }
+.auth-form textarea { resize: vertical; font-family: inherit; }
+.auth-form input:focus, .search-box input:focus, .auth-form select:focus, .auth-form textarea:focus { 
+    border-color: var(--sage-green); background: white;
     box-shadow: 0 0 0 3px rgba(106, 153, 78, 0.15); 
 }
+
+/* File Upload UI */
+.file-upload-container { display: flex; flex-direction: column; align-items: center; gap: 8px; margin-bottom: 5px; cursor: pointer; }
+.hidden-file-input { display: none; }
+.file-upload-btn { 
+    background: rgba(167, 201, 87, 0.2); color: var(--hunter-green); 
+    padding: 10px 20px; border-radius: 20px; border: 1px dashed var(--sage-green);
+    font-size: 0.9rem; font-weight: 600; transition: 0.2s; width: 100%; text-align: center;
+}
+.file-upload-btn:hover { background: rgba(167, 201, 87, 0.4); }
+.file-name { font-size: 0.75rem; color: var(--text-light); }
 
 .btn-primary {
     background: var(--sage-green); color: white; padding: 14px; border: none;
@@ -118,7 +132,6 @@ body {
 .pill.active { background: white; color: var(--hunter-green); box-shadow: 0 2px 4px rgba(0,0,0,0.05); }
 
 .search-box { margin-bottom: 20px; }
-.search-box input { width: 100%; }
 
 /* Cards */
 .schedule-card { 
@@ -143,7 +156,7 @@ body {
 
 /* Profile Tab */
 .profile-card { background: white; border-radius: 20px; padding: 30px 20px; text-align: center; box-shadow: var(--card-shadow); border: 1px solid rgba(167, 201, 87, 0.4); }
-.profile-avatar { font-size: 4rem; margin-bottom: 15px; }
+.profile-avatar { margin-bottom: 15px; }
 .profile-card h2 { color: var(--hunter-green); }
 .profile-email { color: var(--text-light); font-size: 0.9rem; margin-bottom: 25px; }
 .profile-details { display: flex; justify-content: center; gap: 15px; margin-bottom: 25px; }
@@ -170,6 +183,41 @@ body {
 .nav-icon { font-size: 1.3rem; transition: 0.2s; }
 .nav-item.active { color: var(--hunter-green); }
 .nav-item.active .nav-icon { transform: translateY(-3px); }
+
+/* --- SOCIAL & CHAT UI --- */
+.user-card {
+    background: white; border-radius: 12px; padding: 15px; border: 1px solid rgba(167, 201, 87, 0.4);
+    display: flex; align-items: center; justify-content: space-between; margin-bottom: 10px;
+    box-shadow: 0 2px 10px rgba(56, 102, 65, 0.05);
+}
+.user-card-info { display: flex; align-items: center; gap: 12px; }
+.user-card-img { width: 45px; height: 45px; border-radius: 50%; object-fit: cover; border: 2px solid var(--sage-green); }
+.user-card-details h4 { color: var(--hunter-green); margin-bottom: 2px; font-size: 0.95rem; }
+.user-card-details p { color: var(--text-light); font-size: 0.75rem; }
+
+.btn-small { background: var(--sage-green); color: white; border: none; padding: 6px 12px; border-radius: 8px; font-weight: 600; cursor: pointer; font-size: 0.8rem; }
+.btn-small:hover { background: var(--hunter-green); }
+
+/* Fullscreen Chat Overlay */
+.chat-overlay {
+    position: fixed; top: 0; left: 50%; transform: translateX(-50%); width: 100%; max-width: 550px; height: 100%;
+    background: var(--vanilla-cream); z-index: 200; display: flex; flex-direction: column;
+    animation: slideUp 0.3s ease-out;
+}
+@keyframes slideUp { from { transform: translate(-50%, 100%); } to { transform: translate(-50%, 0); } }
+
+.chat-header { background: var(--hunter-green); padding: 15px; display: flex; align-items: center; gap: 15px; box-shadow: 0 2px 10px rgba(0,0,0,0.1); }
+.chat-header img { width: 40px; height: 40px; border-radius: 50%; object-fit: cover; border: 2px solid white; }
+
+.chat-messages { flex: 1; padding: 20px; display: flex; flex-direction: column; gap: 10px; background: #fafaf5; }
+.msg-bubble { max-width: 75%; padding: 10px 15px; border-radius: 15px; font-size: 0.9rem; line-height: 1.4; position: relative; }
+.msg-sent { align-self: flex-end; background: var(--sage-green); color: white; border-bottom-right-radius: 2px; }
+.msg-received { align-self: flex-start; background: white; color: var(--text-main); border: 1px solid rgba(167, 201, 87, 0.3); border-bottom-left-radius: 2px; }
+.msg-time { font-size: 0.6rem; opacity: 0.7; margin-top: 5px; text-align: right; display: block; }
+
+.chat-input-area { padding: 15px; background: white; border-top: 1px solid rgba(167, 201, 87, 0.3); display: flex; gap: 10px; padding-bottom: calc(15px + env(safe-area-inset-bottom)); }
+.chat-input-area input { flex: 1; padding: 12px 20px; border-radius: 25px; border: 1px solid rgba(167, 201, 87, 0.5); font-size: 0.95rem; background: #fafaf5; outline: none; }
+.chat-input-area input:focus { border-color: var(--sage-green); background: white; }
 
 /* Utilities */
 .hidden { display: none !important; }
