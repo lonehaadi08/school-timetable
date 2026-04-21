@@ -16,10 +16,13 @@ jobs:
       - name: Setup Node.js
         uses: actions/setup-node@v4
         with:
-          node-version: '20'
+          node-version: '24' 
 
       - name: Install NPM Dependencies
         run: npm install
+
+      - name: Install Capacitor CLI Globally
+        run: npm install -g @capacitor/cli
 
       - name: Sync Web Code to Android
         run: npx cap sync android
