@@ -1,6 +1,6 @@
 {
   "metadata": {
-    "last_updated": "2026-04-22 16:10:12.777072"
+    "last_updated": "2026-04-22 17:15:25.257537"
   },
   "daily": [
     {
@@ -20,8 +20,8 @@
     },
     {
       "Batch": "RF28X",
-      "23 Apr, Thu - 9:00 AM": "Che(MA)",
-      "23 Apr, Thu - 10:20 AM": "Mat(AK)",
+      "23 Apr, Thu - 9:00 AM": "Mat(AK)",
+      "23 Apr, Thu - 10:20 AM": "Che(MA)",
       "23 Apr, Thu - 11:30 AM": "Phy(FN)",
       "23 Apr, Thu - 12:40 PM": "Mat(AK)",
       "Room (23 Apr, Thu)": "R10"
@@ -862,8 +862,8 @@
       "24 Apr, Fri - 10:20 AM": "Mat(AF)",
       "24 Apr, Fri - 11:30 AM": "Phy(FN)",
       "Room (24 Apr, Fri)": "R04",
-      "23 Apr, Thu - 9:00 AM": "Che(MA)",
-      "23 Apr, Thu - 10:20 AM": "Mat(AK)",
+      "23 Apr, Thu - 9:00 AM": "Mat(AK)",
+      "23 Apr, Thu - 10:20 AM": "Che(MA)",
       "23 Apr, Thu - 11:30 AM": "Phy(FN)",
       "23 Apr, Thu - 12:40 PM": "Mat(AK)",
       "Room (23 Apr, Thu)": "R10",
