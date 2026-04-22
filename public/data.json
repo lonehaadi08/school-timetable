@@ -1,6 +1,6 @@
 {
   "metadata": {
-    "last_updated": "2026-04-22 10:01:42.852904"
+    "last_updated": "2026-04-22 11:32:27.389921"
   },
   "daily": [
     {
@@ -1711,7 +1711,7 @@
       "25 Apr, Sat - 12:40 PM": "Mat(NF)",
       "Room (25 Apr, Sat)": "R03",
       "24 Apr, Fri - 9:00 AM": "Mat(NF)",
-      "24 Apr, Fri - 10:20 AM": "Mat(NF)",
+      "24 Apr, Fri - 10:20 AM": "Che(MA)",
       "24 Apr, Fri - 11:30 AM": "Phy(NS)",
       "Room (24 Apr, Fri)": "R10",
       "22 Apr, Wed - 9:00 AM": "Che(MA)",
@@ -2489,7 +2489,7 @@
       "25 Apr, Sat - 3:30 PM": "RTS@3:30 PM",
       "25 Apr, Sat - 4:40 PM": "RTS",
       "24 Apr, Fri - 9:00 AM": "Phy(FB)",
-      "24 Apr, Fri - 10:20 AM": "Bio(UR)",
+      "24 Apr, Fri - 10:20 AM": "Phy(FB)",
       "24 Apr, Fri - 11:30 AM": "Che(JM)",
       "Room (24 Apr, Fri)": "R08",
       "22 Apr, Wed - 9:00 AM": "Che(JM)",
@@ -2607,7 +2607,7 @@
     },
     {
       "Batch": "RM27X",
-      "25 Apr, Sat - 9:00 AM": "Bio(RR)",
+      "25 Apr, Sat - 9:00 AM": "Bio(UR)",
       "25 Apr, Sat - 10:20 AM": "Che(MA)",
       "25 Apr, Sat - 11:30 AM": "Coun",
       "25 Apr, Sat - 12:40 PM": "Phy(NS)",
