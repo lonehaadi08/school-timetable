@@ -1,6 +1,6 @@
 {
   "metadata": {
-    "last_updated": "2026-04-26 23:24:50.489699"
+    "last_updated": "2026-04-27 00:05:38.777883"
   },
   "daily": [
     {
@@ -333,6 +333,10 @@
     },
     {
       "Batch": "RB26X",
+      "24 Oct, Fri - 9:00 AM": "Phy(FN)",
+      "24 Oct, Fri - 10:20 AM": "Che(FR)",
+      "24 Oct, Fri - 11:30 AM": "Bio(MH)",
+      "Room (24 Oct, Fri)": "R12",
       "23 Oct, Thu - 9:00 AM": "Che(FR)",
       "23 Oct, Thu - 10:20 AM": "Bio(MH)",
       "23 Oct, Thu - 11:30 AM": "Phy(FN)",
@@ -1273,6 +1277,10 @@
       "30 Mar, Mon - 11:30 AM": "Mat(AK)",
       "30 Mar, Mon - 12:40 PM": "Phy(FN)",
       "Room (30 Mar, Mon)": "R04",
+      "24 Oct, Fri - 9:00 AM": "Phy(GA)",
+      "24 Oct, Fri - 10:20 AM": "Phy(GA)",
+      "24 Oct, Fri - 11:30 AM": "Phy(GA)",
+      "Room (24 Oct, Fri)": "R02",
       "23 Oct, Thu - 9:00 AM": "Phy(GA)",
       "23 Oct, Thu - 10:20 AM": "Phy(GA)",
       "23 Oct, Thu - 11:30 AM": "Phy(GA)",
@@ -1942,6 +1950,10 @@
       "30 Mar, Mon - 11:30 AM": "Che(MA)",
       "30 Mar, Mon - 12:40 PM": "Che(MA)",
       "Room (30 Mar, Mon)": "R10",
+      "24 Oct, Fri - 9:00 AM": "Phy(GA)",
+      "24 Oct, Fri - 10:20 AM": "Phy(GA)",
+      "24 Oct, Fri - 11:30 AM": "Phy(GA)",
+      "Room (24 Oct, Fri)": "R03",
       "23 Oct, Thu - 9:00 AM": "Phy(GA)",
       "23 Oct, Thu - 10:20 AM": "Phy(GA)",
       "23 Oct, Thu - 11:30 AM": "Phy(GA)",
@@ -4959,6 +4971,11 @@
       "30 Mar, Mon - 4:40 PM": "Mat(AK)",
       "30 Mar, Mon - 5:50 PM": "Che(AR)",
       "Room (30 Mar, Mon)": "R06",
+      "Doubt, 2:40-3:40PM,R09 (24 Oct, Fri)": "Phy(NS)@2:45 PM",
+      "24 Oct, Fri - 3:45 PM": "Phy(NS)",
+      "24 Oct, Fri - 5:00 PM": "Phy(NS)",
+      "24 Oct, Fri - 6:15 PM": "Mat(AK)",
+      "Room (24 Oct, Fri)": "R04",
       "Doubt, 2:40-3:40PM,R09 (23 Oct, Thu)": "Phy(NS)@2:45 PM",
       "23 Oct, Thu - 3:45 PM": "Phy(NS)",
       "23 Oct, Thu - 5:00 PM": "Phy(NS)",
@@ -5446,6 +5463,11 @@
       "25 Mar, Wed - 3:30 PM": "Che(MA)",
       "25 Mar, Wed - 4:40 PM": "Che(MA)",
       "Room (25 Mar, Wed)": "R10",
+      "Doubt, 2:40-3:40PM,R09 (24 Oct, Fri)": "Mat(AF)@2:45 PM",
+      "24 Oct, Fri - 3:45 PM": "Mat(AF)",
+      "24 Oct, Fri - 5:00 PM": "Che(MA)",
+      "24 Oct, Fri - 6:15 PM": "Phy(FN)",
+      "Room (24 Oct, Fri)": "R07",
       "23 Oct, Thu - 12:40 PM": "Che(MA)",
       "Room (23 Oct, Thu)": "R02",
       "Doubt, 2:40-3:40PM,R09 (23 Oct, Thu)": "Mat(AF)@2:45 PM",
