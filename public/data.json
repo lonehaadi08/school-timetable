@@ -1,6 +1,6 @@
 {
   "metadata": {
-    "last_updated": "2026-04-30 04:57:00.795488"
+    "last_updated": "2026-04-30 07:31:27.582933"
   },
   "daily": [
     {
@@ -1004,8 +1004,6 @@
     },
     {
       "Batch": "RF28Y",
-      "2 May, Sat - 3:30 PM": "RTS",
-      "2 May, Sat - 4:40 PM": "RTS",
       "1 May, Fri - 9:00 AM": "Phy(FN)",
       "1 May, Fri - 10:20 AM": "Che(JM)",
       "1 May, Fri - 11:30 AM": "Mat(AF)",
@@ -4761,6 +4759,10 @@
     },
     {
       "Batch": "RF27Z",
+      "2 May, Sat - 9:00 AM": "RTS",
+      "2 May, Sat - 10:20 AM": "RTS",
+      "2 May, Sat - 11:30 AM": "RTS",
+      "Room (2 May, Sat)": "R02",
       "2 May, Sat - 3:30 PM": "RTS",
       "2 May, Sat - 4:40 PM": "RTS",
       "Doubt, 2:30-3:30PM,R10 (1 May, Fri)": "Phy(NS)@2:00 PM",
