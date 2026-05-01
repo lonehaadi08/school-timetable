@@ -1,6 +1,6 @@
 {
   "metadata": {
-    "last_updated": "2026-05-01 09:12:57.844337"
+    "last_updated": "2026-05-01 10:45:04.661970"
   },
   "daily": [
     {
@@ -185,6 +185,11 @@
     },
     {
       "Batch": "JEE ADV 2026",
+      "2 May, Sat - 10:20 AM": "Mat(AK)",
+      "2 May, Sat - 11:30 AM": "Che(AR)",
+      "2 May, Sat - 12:40 PM": "Che(MA)",
+      "Room (2 May, Sat)": "R06",
+      "2 May, Sat - 3:30 PM": "Phy(NS)",
       "1 May, Fri - 9:00 AM": "Test-1@9:00 AM",
       "1 May, Fri - 10:20 AM": "Test",
       "1 May, Fri - 11:30 AM": "Test",
