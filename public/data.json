@@ -1,6 +1,6 @@
 {
   "metadata": {
-    "last_updated": "2026-05-02 03:52:07.547791"
+    "last_updated": "2026-05-02 06:08:24.264811"
   },
   "daily": [
     {
@@ -81,7 +81,7 @@
       "Batch": "RF28Z",
       "2 May, Sat - 9:00 AM": "Che(MA)",
       "2 May, Sat - 10:20 AM": "Phy(FN)",
-      "2 May, Sat - 11:30 AM": "Che(MA)",
+      "2 May, Sat - 11:30 AM": "Mat(NF)",
       "2 May, Sat - 12:40 PM": "Mat(NF)",
       "Room (2 May, Sat)": "R03"
     },
@@ -4615,7 +4615,7 @@
       "Batch": "RF28Z",
       "2 May, Sat - 9:00 AM": "Che(MA)",
       "2 May, Sat - 10:20 AM": "Phy(FN)",
-      "2 May, Sat - 11:30 AM": "Che(MA)",
+      "2 May, Sat - 11:30 AM": "Mat(NF)",
       "2 May, Sat - 12:40 PM": "Mat(NF)",
       "Room (2 May, Sat)": "R03",
       "Doubt, 2:30-3:30PM,R10 (1 May, Fri)": "Phy(FN)@2:00 PM",
