@@ -1,8 +1,131 @@
 {
   "metadata": {
-    "last_updated": "2026-05-03 09:50:23.535422"
+    "last_updated": "2026-05-03 10:56:11.509829"
   },
-  "daily": [],
+  "daily": [
+    {
+      "Batch": "JEE ADV 2026",
+      "4 May, Mon - 9:00 AM": "Test-1@9:00 AM",
+      "4 May, Mon - 10:20 AM": "Test",
+      "4 May, Mon - 11:30 AM": "Test",
+      "Room (4 May, Mon)": "R19",
+      "Doubt, 2:30-3:30PM,R10 (4 May, Mon)": "Test-2@2:30 PM",
+      "4 May, Mon - 3:30 PM": "Test",
+      "4 May, Mon - 4:40 PM": "Test"
+    },
+    {
+      "Batch": "RF28E",
+      "4 May, Mon - 9:00 AM": "Mat(NF)",
+      "4 May, Mon - 10:20 AM": "Mat(AF)",
+      "4 May, Mon - 11:30 AM": "Che(JM)",
+      "4 May, Mon - 12:40 PM": "Phy(NS)",
+      "Room (4 May, Mon)": "R03"
+    },
+    {
+      "Batch": "RF28Y",
+      "4 May, Mon - 9:00 AM": "Mat(AF)",
+      "4 May, Mon - 10:20 AM": "Che(JM)",
+      "4 May, Mon - 11:30 AM": "Phy(FN)",
+      "4 May, Mon - 12:40 PM": "Mat(AF)",
+      "Room (4 May, Mon)": "R07"
+    },
+    {
+      "Batch": "RF27U",
+      "4 May, Mon - 9:00 AM": "Che(AR)",
+      "4 May, Mon - 10:20 AM": "Phy(FN)",
+      "4 May, Mon - 11:30 AM": "Che(AR)",
+      "4 May, Mon - 12:40 PM": "Mat(AK)",
+      "Room (4 May, Mon)": "R04"
+    },
+    {
+      "Batch": "RF27V",
+      "4 May, Mon - 9:00 AM": "Che(MA)",
+      "4 May, Mon - 10:20 AM": "Mat(NF)",
+      "4 May, Mon - 11:30 AM": "Phy(NS)",
+      "4 May, Mon - 12:40 PM": "Mat(NF)",
+      "Room (4 May, Mon)": "R02"
+    },
+    {
+      "Batch": "RM28X",
+      "4 May, Mon - 9:00 AM": "Che(JM)",
+      "4 May, Mon - 10:20 AM": "Bio(RR)",
+      "4 May, Mon - 11:30 AM": "Phy(FB)",
+      "4 May, Mon - 12:40 PM": "Bio(UR)",
+      "Room (4 May, Mon)": "R08"
+    },
+    {
+      "Batch": "RM27X",
+      "4 May, Mon - 9:00 AM": "Bio(RR)",
+      "4 May, Mon - 10:20 AM": "Phy(NS)",
+      "4 May, Mon - 11:30 AM": "Bio(UR)",
+      "4 May, Mon - 12:40 PM": "Che(MA)",
+      "Room (4 May, Mon)": "R09"
+    },
+    {
+      "Batch": "Extra 1",
+      "Room (4 May, Mon)": "R04",
+      "Doubt, 2:30-3:30PM,R10 (4 May, Mon)": "Xtra Phy(FN)@2:00 PM"
+    },
+    {
+      "Batch": "RI30A",
+      "4 May, Mon - 3:30 PM": "Urd(SZ)",
+      "4 May, Mon - 4:40 PM": "Bio(UR)",
+      "4 May, Mon - 5:50 PM": "Mat(AF)",
+      "Room (4 May, Mon)": "R02"
+    },
+    {
+      "Batch": "RI29A",
+      "4 May, Mon - 3:30 PM": "Soc(SB)",
+      "4 May, Mon - 4:40 PM": "Mat(AF)",
+      "4 May, Mon - 5:50 PM": "Bio(UR)",
+      "Room (4 May, Mon)": "R09"
+    },
+    {
+      "Batch": "RR27A",
+      "Doubt, 2:30-3:30PM,R10 (4 May, Mon)": "Xtra Che (AR)@2:00 PM",
+      "4 May, Mon - 3:30 PM": "Mat(AK)",
+      "4 May, Mon - 4:40 PM": "Che(AR)",
+      "4 May, Mon - 5:50 PM": "Phy(FN)",
+      "Room (4 May, Mon)": "R04"
+    },
+    {
+      "Batch": "RF28A",
+      "4 May, Mon - 3:30 PM": "Mat(AF)",
+      "4 May, Mon - 4:40 PM": "Che(MA)",
+      "4 May, Mon - 5:50 PM": "Phy(NS)",
+      "Room (4 May, Mon)": "R07"
+    },
+    {
+      "Batch": "RM27Z",
+      "4 May, Mon - 3:30 PM": "Phy(FN)",
+      "4 May, Mon - 4:40 PM": "Che(JM)",
+      "4 May, Mon - 5:50 PM": "Bio(RR)",
+      "Room (4 May, Mon)": "R12"
+    },
+    {
+      "Batch": "RF28Z",
+      "Doubt, 2:30-3:30PM,R10 (4 May, Mon)": "Mat(NF)@2:00 PM",
+      "4 May, Mon - 3:30 PM": "Mat(NF)",
+      "4 May, Mon - 4:40 PM": "Phy(FN)",
+      "4 May, Mon - 5:50 PM": "Che(MA)",
+      "Room (4 May, Mon)": "R03"
+    },
+    {
+      "Batch": "RF27Z",
+      "Doubt, 2:30-3:30PM,R10 (4 May, Mon)": "Mat(AK)@2:00 PM",
+      "4 May, Mon - 3:30 PM": "Phy(NS)",
+      "4 May, Mon - 4:40 PM": "Mat(AK)",
+      "4 May, Mon - 5:50 PM": "Che(AR)",
+      "Room (4 May, Mon)": "R06"
+    },
+    {
+      "Batch": "RF27A",
+      "4 May, Mon - 3:30 PM": "Che(MA)",
+      "4 May, Mon - 4:40 PM": "Phy(NS)",
+      "4 May, Mon - 5:50 PM": "Mat(NF)",
+      "Room (4 May, Mon)": "R08"
+    }
+  ],
   "weekly": [
     {
       "Batch": "NEET 2026",
