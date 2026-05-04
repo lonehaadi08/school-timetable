@@ -1,7 +1,7 @@
 name: Build Android APK
 
 on:
-  workflow_dispatch: # This allows you to click a "Run Workflow" button manually in GitHub
+  workflow_dispatch: 
 
 jobs:
   build:
@@ -26,7 +26,7 @@ jobs:
         uses: actions/setup-java@v4
         with:
           distribution: 'temurin'
-          java-version: '17'
+          java-version: '21'
 
       - name: Make Gradle Executable
         run: chmod +x android/gradlew
