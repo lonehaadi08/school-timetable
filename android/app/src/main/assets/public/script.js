@@ -1,11 +1,10 @@
 // ==========================================
-// 1. FIREBASE, EMAILJS & CAPACITOR SETUP
+// 1. FIREBASE, EMAILJS, CAPACITOR & API SETUP
 // ==========================================
 import { initializeApp } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-app.js";
-import { getAuth, createUserWithEmailAndPassword, signInWithEmailAndPassword, GoogleAuthProvider, signInWithPopup, onAuthStateChanged, signOut, sendPasswordResetEmail } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-auth.js";
-import { getFirestore, doc, setDoc, getDoc, collection, query, where, getDocs, addDoc, onSnapshot, orderBy, serverTimestamp, updateDoc } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore.js";
+import { getAuth, createUserWithEmailAndPassword, signInWithEmailAndPassword, GoogleAuthProvider, signInWithPopup, onAuthStateChanged, signOut, sendPasswordResetEmail, setPersistence, browserLocalPersistence } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-auth.js";
+import { getFirestore, doc, setDoc, getDoc, collection, query, where, getDocs, addDoc, onSnapshot, orderBy, serverTimestamp, updateDoc, deleteDoc } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore.js";
 
-// Import Capacitor Notifications (Works safely in both web and app environments)
 const { LocalNotifications } = window.capacitorExports || window.Capacitor?.Plugins || {};
 
 const firebaseConfig = {
@@ -22,29 +21,59 @@ const auth = getAuth(app);
 const db = getFirestore(app);
 const googleProvider = new GoogleAuthProvider();
 
-// Initialize EmailJS
+// FORCE FIREBASE TO SURVIVE "RECENT APPS" CLEAR
+setPersistence(auth, browserLocalPersistence);
+
+const DEFAULT_AVATAR = "data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='%23526b58'%3E%3Cpath d='M12 12c2.21 0 4-1.79 4-4s-1.79-4-4-4-4 1.79-4 4 1.79 4 4 4zm0 2c-2.67 0-8 1.34-8 4v2h16v-2c0-2.66-5.33-4-8-4z'/%3E%3C/svg%3E";
+
 emailjs.init("eV9GmBZdy2ByqSZmw");
 const IMGBB_API_KEY = "d7a0fd403ed8a561aab9d2b6d2961e9d";
-
-// Data & State
+const GEMINI_API_KEY = "AIzaSyAtuXIxgecoRWauk71Fb6uEgDPNFCXXGgs";
+const GROQ_API_KEY = "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"; 
 const DATA_URL = 'https://raw.githubusercontent.com/lonehaadi08/school-timetable/main/public/data.json';
+
 let timetableData = { daily: [], weekly: [] };
 let currentUserProfile = null;
 let myScheduleTimeView = 'daily';
 
-// Registration Engine State
-let generatedOTP = null;
-let pendingRegistrationData = null;
-let pendingProfilePicFile = null;
+let generatedOTP = null; let pendingRegistrationData = null; let pendingProfilePicFile = null;
+let activeChatUnsubscribe = null; let requestsUnsubscribe = null; let friendsUnsubscribe = null; let currentChatFriendId = null;
 
-// Social Engine State
-let activeChatUnsubscribe = null;
-let requestsUnsubscribe = null;
-let friendsUnsubscribe = null;
-let currentChatFriendId = null;
+let aiConversationHistory = [];
+let currentTeacherContext = "";
 
 // ==========================================
-// 2. UI UTILITIES & FILE UPLOAD LISTENER
+// 2. DUAL-ENGINE AI FALLBACK SYSTEM
+// ==========================================
+async function generateAIResponse(prompt, isChat = false, history = []) {
+    let geminiContents = isChat ? history : [{ role: "user", parts: [{ text: prompt }] }];
+    try {
+        const geminiRes = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${GEMINI_API_KEY}`, {
+            method: "POST", headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ contents: geminiContents, generationConfig: { temperature: 0.4 } })
+        });
+        const geminiData = await geminiRes.json();
+        if (geminiRes.ok && geminiData.candidates) return geminiData.candidates[0].content.parts[0].text;
+    } catch (e) {}
+
+    try {
+        let groqMessages = isChat 
+            ? history.map(h => ({ role: h.role === "model" ? "assistant" : "user", content: h.parts[0].text })) 
+            : [{ role: "user", content: prompt }];
+
+        const groqRes = await fetch("https://api.groq.com/openai/v1/chat/completions", {
+            method: "POST",
+            headers: { "Authorization": `Bearer ${GROQ_API_KEY}`, "Content-Type": "application/json" },
+            body: JSON.stringify({ model: "llama3-8b-8192", messages: groqMessages, temperature: 0.4 })
+        });
+        const groqData = await groqRes.json();
+        if (groqRes.ok && groqData.choices) return groqData.choices[0].message.content;
+        throw new Error("Both AI engines failed.");
+    } catch (e) { throw e; }
+}
+
+// ==========================================
+// 3. UI UTILITIES & PROFILE LIVE EDITS
 // ==========================================
 window.toggleAuth = (view) => {
     document.getElementById('loginForm').classList.toggle('hidden', view !== 'login');
@@ -54,11 +83,9 @@ window.toggleAuth = (view) => {
 };
 
 window.cancelRegistration = () => {
-    document.getElementById('otpView').classList.add('hidden');
+    document.getElementById('otpView').classList.add('hidden'); 
     document.getElementById('authView').classList.remove('hidden');
-    generatedOTP = null;
-    pendingRegistrationData = null;
-    toggleAuth('register');
+    generatedOTP = null; pendingRegistrationData = null; toggleAuth('register');
 }
 
 document.getElementById('regProfilePic').addEventListener('change', function() {
@@ -81,295 +108,287 @@ window.switchTimeView = (view) => {
     renderMySchedule();
 };
 
-function hideErrors() {
-    document.querySelectorAll('.error-msg').forEach(el => el.classList.add('hidden'));
-}
-function showError(id, msg) {
-    const el = document.getElementById(id);
-    el.textContent = msg;
-    el.classList.remove('hidden');
-}
+function hideErrors() { document.querySelectorAll('.error-msg').forEach(el => el.classList.add('hidden')); }
+function showError(id, msg) { const el = document.getElementById(id); el.textContent = msg; el.classList.remove('hidden'); }
+
+window.forceRefreshApp = async () => {
+    try {
+        const res = await fetch(`${DATA_URL}?bust=${new Date().getTime()}`, { cache: "no-store" }); 
+        timetableData = await res.json(); window.timetableData = timetableData;
+        renderMySchedule();
+        const tInput = document.getElementById('teacherInput'); 
+        if(tInput && tInput.value) tInput.dispatchEvent(new Event('input'));
+        alert("Timetable successfully synced from live server!");
+    } catch(e) { alert("Failed to sync. Please check your internet connection."); }
+};
+
+window.downloadPDF = (elementId, filename) => {
+    const element = document.getElementById(elementId);
+    if(element.innerText.includes("Start typing") || element.innerText.includes("Loading") || element.innerText.includes("❌")) return alert("Search for valid data first before exporting to PDF!");
+    const dateStr = new Date().toLocaleDateString().replace(/\//g, '-');
+    const opt = { margin: 0.5, filename: `${filename}_${dateStr}.pdf`, image: { type: 'jpeg', quality: 0.98 }, html2canvas: { scale: 2, useCORS: true, allowTaint: true }, jsPDF: { unit: 'in', format: 'letter', orientation: 'portrait' } };
+    html2pdf().set(opt).from(element).save();
+};
 
 // ==========================================
-// 3. THE SUPER-REGISTRATION ENGINE (OTP)
+// 4. BIOMETRIC (FINGERPRINT) ENGINE
 // ==========================================
-
-document.getElementById('registerForm').addEventListener('submit', async (e) => {
-    e.preventDefault();
-    hideErrors();
-    const btn = document.getElementById('btnTriggerOTP');
-    btn.textContent = "Sending OTP...";
-    btn.disabled = true;
-
-    pendingRegistrationData = {
-        name: document.getElementById('regName').value,
-        phone: document.getElementById('regPhone').value,
-        email: document.getElementById('regEmail').value,
-        studentClass: document.getElementById('regClass').value,
-        aim: document.getElementById('regAim').value,
-        batch: document.getElementById('regBatch').value.toUpperCase(),
-        about: document.getElementById('regAbout').value,
-        password: document.getElementById('regPassword').value 
-    };
-    pendingProfilePicFile = document.getElementById('regProfilePic').files[0];
-
-    generatedOTP = Math.floor(100000 + Math.random() * 900000).toString();
-    const expiryTime = new Date(Date.now() + 15 * 60000).toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'});
+window.setupFingerprint = async () => {
+    if (localStorage.getItem('fingerprintEnabled') === 'true') {
+        localStorage.removeItem('fingerprintEnabled');
+        localStorage.removeItem('fpCredId');
+        alert("Fingerprint lock disabled.");
+        document.getElementById('fpBtn').innerHTML = "🔒 Enable Fingerprint Lock";
+        return;
+    }
+    
+    if (!window.PublicKeyCredential) return alert("Biometrics not supported on this device/browser.");
 
     try {
-        await emailjs.send("service_z7a32gh", "template_fhqy1oh", {
-            to_email: pendingRegistrationData.email,
-            passcode: generatedOTP,
-            time: expiryTime
+        const challenge = new Uint8Array(32); window.crypto.getRandomValues(challenge);
+        const userId = new Uint8Array(16); window.crypto.getRandomValues(userId);
+        const cred = await navigator.credentials.create({
+            publicKey: {
+                challenge: challenge,
+                rp: { name: "Student Portal", id: window.location.hostname },
+                user: { id: userId, name: currentUserProfile.email, displayName: currentUserProfile.name },
+                pubKeyCredParams: [{ type: "public-key", alg: -7 }],
+                authenticatorSelection: { authenticatorAttachment: "platform", userVerification: "required" },
+                timeout: 60000,
+            }
         });
-
-        document.getElementById('authView').classList.add('hidden');
-        document.getElementById('otpView').classList.remove('hidden');
-        document.getElementById('otpEmailDisplay').textContent = pendingRegistrationData.email;
-        
-    } catch (error) {
-        showError('registerError', "Failed to send OTP email. Please check your email address.");
-    } finally {
-        btn.textContent = "Send OTP";
-        btn.disabled = false;
+        if (cred) {
+            localStorage.setItem('fingerprintEnabled', 'true');
+            localStorage.setItem('fpCredId', JSON.stringify(Array.from(new Uint8Array(cred.rawId))));
+            alert("Fingerprint lock enabled successfully! Next time you clear the app, you will be asked to unlock.");
+            document.getElementById('fpBtn').innerHTML = "🔓 Disable Fingerprint Lock";
+        }
+    } catch (e) {
+        alert("Setup failed. Ensure your device has a screen lock/fingerprint set up.");
     }
+};
+
+window.promptFingerprint = async () => {
+    try {
+        const credentialId = new Uint8Array(JSON.parse(localStorage.getItem('fpCredId')));
+        const assertion = await navigator.credentials.get({
+            publicKey: {
+                challenge: new Uint8Array(32),
+                allowCredentials: [{ id: credentialId, type: "public-key" }],
+                userVerification: "required"
+            }
+        });
+        if (assertion) {
+            sessionStorage.setItem('appUnlocked', 'true'); // Survives refresh, dies on force-close
+            window.location.reload(); 
+        }
+    } catch (e) {}
+};
+
+window.logoutFromLock = () => {
+    sessionStorage.removeItem('appUnlocked');
+    signOut(auth);
+    window.location.reload();
+};
+
+window.setCustomReminder = async () => {
+    const text = document.getElementById('remText').value.trim(); const time = document.getElementById('remTime').value;
+    if(!text || !time) return alert("Please enter both a message and a time.");
+    const [hours, minutes] = time.split(':'); let alarmDate = new Date(); alarmDate.setHours(hours, minutes, 0, 0);
+    if(alarmDate <= new Date()) alarmDate.setDate(alarmDate.getDate() + 1);
+    
+    if (LocalNotifications) {
+        let permStatus = await LocalNotifications.checkPermissions(); 
+        if (permStatus.display !== 'granted') await LocalNotifications.requestPermissions();
+        await LocalNotifications.schedule({ notifications: [{ title: `⏰ Reminder`, body: text, id: new Date().getTime(), schedule: { at: alarmDate }, sound: null }] });
+        const status = document.getElementById('remStatus'); status.textContent = `✅ Alarm set successfully!`; status.classList.remove('hidden');
+        document.getElementById('remText').value = ''; document.getElementById('remTime').value = ''; setTimeout(() => status.classList.add('hidden'), 5000);
+    } else alert("Native app reminders only work on installed phones.");
+};
+
+document.getElementById('liveProfilePicInput').addEventListener('change', async function() {
+    if(!this.files[0] || !auth.currentUser) return;
+    const file = this.files[0];
+    document.getElementById('profileImage').src = URL.createObjectURL(file); 
+    try {
+        const formData = new FormData(); formData.append("image", file);
+        const imgRes = await fetch(`https://api.imgbb.com/1/upload?key=${IMGBB_API_KEY}`, { method: "POST", body: formData });
+        const imgData = await imgRes.json();
+        if(imgData.success) {
+            await updateDoc(doc(db, "users", auth.currentUser.uid), { profilePic: imgData.data.url });
+            currentUserProfile.profilePic = imgData.data.url;
+        }
+    } catch(e) { document.getElementById('profileImage').src = currentUserProfile.profilePic; }
+});
+
+window.editBio = async () => {
+    if(!auth.currentUser) return;
+    const newBio = prompt("Enter your new bio:", currentUserProfile.about || "");
+    if(newBio !== null) {
+        try {
+            await updateDoc(doc(db, "users", auth.currentUser.uid), { about: newBio });
+            currentUserProfile.about = newBio; document.getElementById('profileAbout').textContent = `"${newBio}"`;
+        } catch(e) { alert("Failed to update bio."); }
+    }
+};
+
+window.removeProfilePic = async () => {
+    if(!auth.currentUser || !confirm("Are you sure you want to remove your profile picture?")) return;
+    try {
+        await updateDoc(doc(db, "users", auth.currentUser.uid), { profilePic: DEFAULT_AVATAR });
+        currentUserProfile.profilePic = DEFAULT_AVATAR; document.getElementById('profileImage').src = DEFAULT_AVATAR;
+    } catch(e) { }
+};
+
+// ==========================================
+// 5. OTP REGISTRATION & AUTH
+// ==========================================
+document.getElementById('registerForm').addEventListener('submit', async (e) => {
+    e.preventDefault(); hideErrors(); const btn = document.getElementById('btnTriggerOTP'); btn.textContent = "Sending OTP..."; btn.disabled = true;
+    pendingRegistrationData = { name: document.getElementById('regName').value, phone: document.getElementById('regPhone').value, email: document.getElementById('regEmail').value, studentClass: document.getElementById('regClass').value, aim: document.getElementById('regAim').value, batch: document.getElementById('regBatch').value.toUpperCase(), about: document.getElementById('regAbout').value, password: document.getElementById('regPassword').value };
+    pendingProfilePicFile = document.getElementById('regProfilePic').files[0];
+    generatedOTP = Math.floor(100000 + Math.random() * 900000).toString(); const expiryTime = new Date(Date.now() + 15 * 60000).toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'});
+    try { await emailjs.send("service_z7a32gh", "template_fhqy1oh", { to_email: pendingRegistrationData.email, passcode: generatedOTP, time: expiryTime }); document.getElementById('authView').classList.add('hidden'); document.getElementById('otpView').classList.remove('hidden'); document.getElementById('otpEmailDisplay').textContent = pendingRegistrationData.email; } catch (error) { showError('registerError', "Failed to send OTP email."); } finally { btn.textContent = "Send OTP"; btn.disabled = false; }
 });
 
 document.getElementById('otpForm').addEventListener('submit', async (e) => {
-    e.preventDefault();
-    hideErrors();
-    
-    const enteredOTP = document.getElementById('otpInput').value;
-    if (enteredOTP !== generatedOTP) return showError('otpError', "Invalid OTP. Please try again.");
-
-    const btn = document.getElementById('btnVerifyOTP');
-    const loadingText = document.getElementById('otpLoading');
-    btn.disabled = true;
-    loadingText.classList.remove('hidden');
-
+    e.preventDefault(); hideErrors(); const enteredOTP = document.getElementById('otpInput').value; if (enteredOTP !== generatedOTP) return showError('otpError', "Invalid OTP.");
+    const btn = document.getElementById('btnVerifyOTP'); const loadingText = document.getElementById('otpLoading'); btn.disabled = true; loadingText.classList.remove('hidden');
     try {
-        let profilePicURL = "https://i.ibb.co/7XqX7q8/default-avatar.png"; 
+        let profilePicURL = DEFAULT_AVATAR; 
         if (pendingProfilePicFile) {
-            loadingText.textContent = "Uploading profile picture...";
-            const formData = new FormData();
-            formData.append("image", pendingProfilePicFile);
-            const imgRes = await fetch(`https://api.imgbb.com/1/upload?key=${IMGBB_API_KEY}`, { method: "POST", body: formData });
-            const imgData = await imgRes.json();
-            if(imgData.success) profilePicURL = imgData.data.url;
+            loadingText.textContent = "Uploading profile picture..."; const formData = new FormData(); formData.append("image", pendingProfilePicFile); const imgRes = await fetch(`https://api.imgbb.com/1/upload?key=${IMGBB_API_KEY}`, { method: "POST", body: formData }); const imgData = await imgRes.json(); if(imgData.success) profilePicURL = imgData.data.url;
         }
-
-        loadingText.textContent = "Creating secure account...";
-        const userCredential = await createUserWithEmailAndPassword(auth, pendingRegistrationData.email, pendingRegistrationData.password);
-        
-        loadingText.textContent = "Saving profile details...";
-        await setDoc(doc(db, "users", userCredential.user.uid), {
-            name: pendingRegistrationData.name,
-            phone: pendingRegistrationData.phone,
-            email: pendingRegistrationData.email,
-            studentClass: pendingRegistrationData.studentClass,
-            aim: pendingRegistrationData.aim,
-            batch: pendingRegistrationData.batch,
-            about: pendingRegistrationData.about,
-            profilePic: profilePicURL
-        });
-    } catch (error) {
-        showError('otpError', error.message.replace("Firebase: ", ""));
-        btn.disabled = false;
-        loadingText.classList.add('hidden');
-    }
+        loadingText.textContent = "Creating secure account..."; const userCredential = await createUserWithEmailAndPassword(auth, pendingRegistrationData.email, pendingRegistrationData.password);
+        loadingText.textContent = "Saving profile details..."; await setDoc(doc(db, "users", userCredential.user.uid), { name: pendingRegistrationData.name, phone: pendingRegistrationData.phone, email: pendingRegistrationData.email, studentClass: pendingRegistrationData.studentClass, aim: pendingRegistrationData.aim, batch: pendingRegistrationData.batch, about: pendingRegistrationData.about, profilePic: profilePicURL });
+    } catch (error) { showError('otpError', error.message.replace("Firebase: ", "")); btn.disabled = false; loadingText.classList.add('hidden'); }
 });
 
-// ==========================================
-// 4. STANDARD AUTHENTICATION LOGIC
-// ==========================================
-
-document.getElementById('loginForm').addEventListener('submit', async (e) => {
-    e.preventDefault();
-    try { await signInWithEmailAndPassword(auth, document.getElementById('loginEmail').value, document.getElementById('loginPassword').value); } 
-    catch (error) { showError('loginError', "Invalid email or password."); }
-});
-
-document.getElementById('resetForm').addEventListener('submit', async (e) => {
-    e.preventDefault();
-    hideErrors();
-    try {
-        await sendPasswordResetEmail(auth, document.getElementById('resetEmail').value);
-        document.getElementById('resetSuccess').textContent = "Reset link sent! Please check your inbox.";
-        document.getElementById('resetSuccess').classList.remove('hidden');
-        document.getElementById('resetEmail').value = "";
-    } catch (error) { showError('resetError', "Failed to send reset email."); }
-});
-
-document.getElementById('btnGoogleSignIn').addEventListener('click', async () => {
-    try { await signInWithPopup(auth, googleProvider); } 
-    catch (error) { showError('loginError', "Google sign-in failed."); }
-});
+document.getElementById('loginForm').addEventListener('submit', async (e) => { e.preventDefault(); try { await signInWithEmailAndPassword(auth, document.getElementById('loginEmail').value, document.getElementById('loginPassword').value); } catch (error) { showError('loginError', "Invalid email or password."); } });
+document.getElementById('resetForm').addEventListener('submit', async (e) => { e.preventDefault(); hideErrors(); try { await sendPasswordResetEmail(auth, document.getElementById('resetEmail').value); document.getElementById('resetSuccess').textContent = "Reset link sent!"; document.getElementById('resetSuccess').classList.remove('hidden'); } catch (error) { showError('resetError', "Failed to send reset email."); } });
+document.getElementById('btnGoogleSignIn').addEventListener('click', async () => { try { await signInWithPopup(auth, googleProvider); } catch (error) { showError('loginError', "Google sign-in failed."); } });
+document.getElementById('logoutBtn').addEventListener('click', () => { sessionStorage.removeItem('appUnlocked'); signOut(auth); });
 
 document.getElementById('completeProfileForm').addEventListener('submit', async (e) => {
-    e.preventDefault();
-    const user = auth.currentUser;
-    if(user) {
-        await setDoc(doc(db, "users", user.uid), {
-            name: user.displayName || "Student",
-            email: user.email,
-            phone: document.getElementById('cpPhone').value,
-            studentClass: document.getElementById('cpClass').value,
-            aim: document.getElementById('cpAim').value,
-            batch: document.getElementById('cpBatch').value.toUpperCase(),
-            profilePic: user.photoURL || "https://i.ibb.co/7XqX7q8/default-avatar.png",
-            about: "I'm a student!"
-        });
-        window.location.reload(); 
-    }
+    e.preventDefault(); const user = auth.currentUser;
+    if(user) { await setDoc(doc(db, "users", user.uid), { name: user.displayName || "Student", email: user.email, phone: document.getElementById('cpPhone').value, studentClass: document.getElementById('cpClass').value, aim: document.getElementById('cpAim').value, batch: document.getElementById('cpBatch').value.toUpperCase(), profilePic: user.photoURL || DEFAULT_AVATAR, about: "I'm a student!" }); window.location.reload(); }
 });
 
-document.getElementById('logoutBtn').addEventListener('click', () => { signOut(auth); });
-
 // ==========================================
-// 5. APP INITIALIZATION & RTS SCANNER
+// 6. APP INIT & BIOMETRIC GATEWAY
 // ==========================================
-
 onAuthStateChanged(auth, async (user) => {
+    const loader = document.getElementById('initialLoader'); 
+    const authView = document.getElementById('authView');
+    const appView = document.getElementById('appView');
+    const lockScreenView = document.getElementById('lockScreenView');
+
     if (user) {
-        document.getElementById('authView').classList.add('hidden');
-        document.getElementById('otpView').classList.add('hidden');
-        const docSnap = await getDoc(doc(db, "users", user.uid));
+        document.getElementById('otpView').classList.add('hidden'); 
+        authView.classList.add('hidden');
+
+        // CHECK IF FINGERPRINT IS ENABLED AND IF SESSION IS NEW
+        const fpEnabled = localStorage.getItem('fingerprintEnabled') === 'true';
+        const isUnlocked = sessionStorage.getItem('appUnlocked') === 'true';
         
+        if (fpEnabled && !isUnlocked) {
+            loader.classList.add('hidden');
+            appView.classList.add('hidden');
+            lockScreenView.classList.remove('hidden');
+            window.promptFingerprint(); 
+            return;
+        }
+
+        const docSnap = await getDoc(doc(db, "users", user.uid));
         if (docSnap.exists()) {
             currentUserProfile = docSnap.data();
+            document.getElementById('profileName').textContent = currentUserProfile.name; document.getElementById('profileEmail').textContent = currentUserProfile.email; document.getElementById('profileBatch').textContent = currentUserProfile.batch; document.getElementById('profileAim').textContent = currentUserProfile.aim || "N/A"; document.getElementById('profileAbout').textContent = `"${currentUserProfile.about || ""}"`; document.getElementById('profileImage').src = currentUserProfile.profilePic || DEFAULT_AVATAR;
             
-            document.getElementById('profileName').textContent = currentUserProfile.name;
-            document.getElementById('profileEmail').textContent = currentUserProfile.email;
-            document.getElementById('profileBatch').textContent = currentUserProfile.batch;
-            document.getElementById('profileAim').textContent = currentUserProfile.aim || "N/A";
-            document.getElementById('profileAbout').textContent = `"${currentUserProfile.about || "Focused on my studies."}"`;
-            document.getElementById('profileImage').src = currentUserProfile.profilePic || "https://i.ibb.co/7XqX7q8/default-avatar.png";
+            document.getElementById('fpBtn').innerHTML = fpEnabled ? "🔓 Disable Fingerprint Lock" : "🔒 Enable Fingerprint Lock";
 
-            document.getElementById('appView').classList.remove('hidden');
-            await fetchTimetableData();
-            renderMySchedule();
-            checkForRTS(); 
-            initSocialEngine(); 
-        } else {
-            document.getElementById('completeProfileView').classList.remove('hidden');
+            await fetchTimetableData(); renderMySchedule(); checkForRTS(); initSocialEngine(); 
+            loader.classList.add('hidden'); 
+            lockScreenView.classList.add('hidden');
+            appView.classList.remove('hidden');
+        } else { 
+            loader.classList.add('hidden'); 
+            document.getElementById('completeProfileView').classList.remove('hidden'); 
         }
-    } else {
-        document.getElementById('appView').classList.add('hidden');
-        document.getElementById('completeProfileView').classList.add('hidden');
-        document.getElementById('otpView').classList.add('hidden');
-        document.getElementById('authView').classList.remove('hidden');
-        currentUserProfile = null;
+    } else { 
+        loader.classList.add('hidden'); 
+        appView.classList.add('hidden'); 
+        document.getElementById('completeProfileView').classList.add('hidden'); 
+        document.getElementById('otpView').classList.add('hidden'); 
+        lockScreenView.classList.add('hidden');
+        authView.classList.remove('hidden'); 
+        currentUserProfile = null; 
     }
 });
 
 async function fetchTimetableData() {
-    try {
-        const res = await fetch(`${DATA_URL}?t=${new Date().getTime()}`);
-        timetableData = await res.json();
-    } catch (e) {
-        document.getElementById('myScheduleResults').innerHTML = '<div class="error-msg" style="margin-top:20px;">Failed to load timetable.</div>';
-    }
+    try { const res = await fetch(`${DATA_URL}?t=${new Date().getTime()}`, { cache: "no-store" }); timetableData = await res.json(); window.timetableData = timetableData; } 
+    catch (e) { document.getElementById('myScheduleResults').innerHTML = '<div class="error-msg">Failed to load timetable. Check your connection.</div>'; }
 }
 
-// Personalized & Native App Notification RTS Checker
 async function checkForRTS() {
-    if (!currentUserProfile) return;
-    const userBatch = currentUserProfile.batch;
-    const mySchedule = timetableData.weekly.find(b => String(b.Batch).toUpperCase() === userBatch);
-    if (!mySchedule) return;
+    if (!currentUserProfile) return; const userBatch = currentUserProfile.batch; const mySchedule = timetableData.weekly.find(b => String(b.Batch).toUpperCase() === userBatch);
+    if (!mySchedule) return; let rtsAlerts = []; const now = new Date(); const currentYear = now.getFullYear(); 
 
-    let rtsAlerts = [];
-    const now = new Date(); 
-    const currentYear = now.getFullYear(); 
-
-    // Ask phone for Notification Permission (if running as an app)
-    if (LocalNotifications) {
-        let permStatus = await LocalNotifications.checkPermissions();
-        if (permStatus.display !== 'granted') {
-            await LocalNotifications.requestPermissions();
-        }
-    }
+    if (LocalNotifications) { let permStatus = await LocalNotifications.checkPermissions(); if (permStatus.display !== 'granted') await LocalNotifications.requestPermissions(); }
 
     Object.keys(mySchedule).forEach(key => {
         const subject = String(mySchedule[key]).toUpperCase();
         if (subject.includes("RTS") && key !== "Batch") {
             try {
-                const parts = key.split('-');
-                if (parts.length >= 2) {
-                    const datePart = parts[0].split(',')[0].trim();
-                    const timePart = parts.slice(1).join('-').trim();
-                    const rtsDate = new Date(`${datePart} ${currentYear} ${timePart}`);
-                    
-                    if (rtsDate >= now) {
-                        rtsAlerts.push(key);
-                        
-                        // Schedule Native App Notification 1 hour before the test!
-                        if (LocalNotifications) {
-                            const alarmTime = new Date(rtsDate.getTime() - (60 * 60 * 1000));
-                            if(alarmTime > now) {
-                                LocalNotifications.schedule({
-                                    notifications: [{
-                                        title: `🚨 Upcoming Test: ${subject}`,
-                                        body: `Your RTS test starts in 1 hour at ${timePart}!`,
-                                        id: rtsDate.getTime(),
-                                        schedule: { at: alarmTime },
-                                        sound: null,
-                                    }]
-                                });
-                            }
-                        }
-                    } 
+                const parts = key.split('-'); if (parts.length >= 2) {
+                    const datePart = parts[0].split(',')[0].trim(); const timePart = parts.slice(1).join('-').trim();
+                    let tempDate = new Date(`${datePart} ${currentYear}`);
+                    if (!isNaN(tempDate)) {
+                        if (tempDate.getMonth() > now.getMonth() + 2) tempDate.setFullYear(currentYear - 1);
+                        const rtsDate = new Date(`${tempDate.toDateString()} ${timePart}`);
+                        if (rtsDate >= now) {
+                            rtsAlerts.push(key);
+                            if (LocalNotifications) { const alarmTime = new Date(rtsDate.getTime() - (60 * 60 * 1000)); if(alarmTime > now) LocalNotifications.schedule({ notifications: [{ title: `🚨 Upcoming Test: ${subject}`, body: `Your RTS test starts in 1 hour at ${timePart}!`, id: rtsDate.getTime(), schedule: { at: alarmTime }, sound: null }] }); }
+                        } 
+                    }
                 } else rtsAlerts.push(key);
             } catch (e) { rtsAlerts.push(key); }
         }
     });
-
-    if (rtsAlerts.length > 0) {
-        document.getElementById('rtsAlert').classList.remove('hidden');
-        document.getElementById('rtsBatchTitle').textContent = `Upcoming Test (RTS) for ${userBatch}`;
-        document.getElementById('rtsTime').innerHTML = rtsAlerts.join('<br>'); 
-    } else {
-        document.getElementById('rtsAlert').classList.add('hidden');
-    }
+    if (rtsAlerts.length > 0) { document.getElementById('rtsAlert').classList.remove('hidden'); document.getElementById('rtsBatchTitle').textContent = `Upcoming Test (RTS) for ${userBatch}`; document.getElementById('rtsTime').innerHTML = rtsAlerts.join('<br>'); } else { document.getElementById('rtsAlert').classList.add('hidden'); }
 }
 
 // ==========================================
-// 6. RENDERING LOGIC
+// 7. ALL BATCHES SEARCH
 // ==========================================
-
 function renderMySchedule() {
     if (!currentUserProfile) return;
     const dataSet = myScheduleTimeView === 'daily' ? timetableData.daily : timetableData.weekly;
     const mySchedule = dataSet.find(b => String(b.Batch).toUpperCase() === currentUserProfile.batch);
     const container = document.getElementById('myScheduleResults');
-    if (!mySchedule) container.innerHTML = `<div class="welcome-msg">No classes scheduled.</div>`;
-    else container.innerHTML = createCardHTML(mySchedule, 0);
+    if (!mySchedule) { container.innerHTML = `<div class="welcome-msg">No classes scheduled.</div>`; } else { container.innerHTML = createCardHTML(mySchedule, 0); }
 }
 
 document.getElementById('batchInput').addEventListener('input', (e) => {
-    const q = e.target.value.trim().toLowerCase();
-    const container = document.getElementById('allBatchesResults');
-    if (q.length < 2) return container.innerHTML = '<div class="welcome-msg">Start typing...</div>';
-    const matches = timetableData.weekly.filter(item => String(item.Batch).toLowerCase().includes(q));
-    container.innerHTML = matches.length ? matches.map((m, i) => createCardHTML(m, i)).join('') : `<div class="welcome-msg">No batches found.</div>`;
+    const q = e.target.value.trim().toLowerCase(); const container = document.getElementById('allBatchesResults');
+    if (q.length < 2) return container.innerHTML = '<div class="welcome-msg">Start typing a batch code or date (e.g. 21 Apr)...</div>';
+    
+    const matches = timetableData.weekly.filter(item => {
+        if(String(item.Batch).toLowerCase().includes(q)) return true;
+        return Object.keys(item).some(k => k.toLowerCase().includes(q));
+    });
+    
+    container.innerHTML = matches.length ? matches.map((m, i) => createCardHTML(m, i)).join('') : `<div class="welcome-msg">No results found.</div>`;
 });
 
 function createCardHTML(item, index) {
-    const batchName = item['Batch'];
-    const scheduleByDate = {};
+    const batchName = item['Batch']; const scheduleByDate = {};
     Object.keys(item).forEach(key => {
-        if (key === "Batch") return;
-        let dateKey = "Other", info = key;
-        if (key.includes('(')) { const match = key.match(/\((.*?)\)/); if (match) dateKey = match[1]; info = key.split('(')[0].trim(); }
-        else if (key.includes('-')) { const parts = key.split('-'); dateKey = parts[0].trim(); info = parts.slice(1).join('-').trim(); }
+        if (key === "Batch") return; let dateKey = "Other", info = key;
+        if (key.includes('-')) { const parts = key.split('-'); dateKey = parts[0].trim(); info = parts.slice(1).join('-').trim(); }
         if (!scheduleByDate[dateKey]) scheduleByDate[dateKey] = {};
-        if (info.toLowerCase().includes('room')) scheduleByDate[dateKey].room = item[key];
-        else {
-            if (!scheduleByDate[dateKey].classes) scheduleByDate[dateKey].classes = [];
-            scheduleByDate[dateKey].classes.push({ time: info, subject: item[key] });
-        }
+        if (info.toLowerCase().includes('room')) { scheduleByDate[dateKey].room = item[key]; } else { if (!scheduleByDate[dateKey].classes) scheduleByDate[dateKey].classes = []; scheduleByDate[dateKey].classes.push({ time: info, subject: item[key] }); }
     });
-
     let datesHtml = '';
     for (const [date, data] of Object.entries(scheduleByDate)) {
         if (!data.classes) continue;
@@ -380,57 +399,220 @@ function createCardHTML(item, index) {
     return `<div class="schedule-card" style="animation-delay: ${index * 0.05}s"><div class="card-header-strip"><div class="batch-tag">${batchName}</div></div><div class="card-body">${datesHtml || '<div style="padding:10px; color:var(--text-light); font-size:0.9rem">No classes.</div>'}</div></div>`;
 }
 
+// ==========================================
+// 8. TIMELINE & AI EXPERT
+// ==========================================
+let aiDebounceTimer = null;
+
 document.getElementById('teacherInput').addEventListener('input', (e) => {
-    const q = e.target.value.trim().toUpperCase();
-    const container = document.getElementById('teacherResults');
-    if (q.length < 2) return container.innerHTML = '<div class="welcome-msg">Search teacher code (e.g., FR)...</div>';
-    let busySlots = [];
-    timetableData.weekly.forEach(batch => {
+    const rawInput = e.target.value.trim().toUpperCase(); 
+    const q = rawInput.replace(/[^A-Z0-9\s]/g, ''); 
+    const container = document.getElementById('teacherResults'); 
+    const aiBox = document.getElementById('aiSummaryBox'); 
+    const aiText = document.getElementById('aiSummaryText');
+    
+    clearTimeout(aiDebounceTimer); aiBox.classList.add('hidden');
+    if (q.length < 2) return container.innerHTML = '<div class="welcome-msg">Search teacher code or date (e.g., FN, 21 Apr)...</div>';
+
+    let rawSlots = []; 
+    const now = new Date(); const currentYear = now.getFullYear(); 
+
+    const maxPast = new Date(); maxPast.setDate(now.getDate() - 14);
+    const maxFuture = new Date(); maxFuture.setDate(now.getDate() + 7);
+
+    const searchRegex = new RegExp(`(^|[^a-zA-Z0-9])${q.replace(/\s+/g, '\\s*')}([^a-zA-Z0-9]|$)`, 'i');
+    
+    const allData = [
+        ...(timetableData.weekly || []).map(b => ({...b, _source: 'weekly'})), 
+        ...(timetableData.daily || []).map(b => ({...b, _source: 'daily'}))
+    ];
+
+    allData.forEach(batch => {
         Object.keys(batch).forEach(key => {
-            if (key === "Batch" || key.toLowerCase().includes("room")) return;
-            if (typeof batch[key] === 'string' && batch[key].toUpperCase().includes(`(${q})`)) {
-                let dateStr = "Scheduled", timeStr = key;
-                if (key.includes('-')) {
-                    const parts = key.split('-');
-                    dateStr = parts[0].trim(); timeStr = parts.slice(1).join('-').trim();
+            if (key === "Batch" || key === "_source" || key.toLowerCase().includes("room")) return;
+            const cellValue = String(batch[key]).toUpperCase();
+            
+            if (searchRegex.test(cellValue) || searchRegex.test(key.toUpperCase())) {
+                let dateStr = "Unknown", timeStr = key, isToday = false; 
+                let slotDate = null;
+
+                if (key.includes('-') && key.match(/\d{1,2}\s[A-Za-z]{3}/)) {
+                    const parts = key.split('-'); dateStr = parts[0].trim(); timeStr = parts.slice(1).join('-').trim();
+                    const cleanDateStr = dateStr.split(',')[0].trim(); 
+                    
+                    let tempDate = new Date(`${cleanDateStr} ${currentYear}`);
+                    if (!isNaN(tempDate)) {
+                        if (tempDate.getMonth() > now.getMonth() + 2) tempDate.setFullYear(currentYear - 1);
+                        slotDate = tempDate;
+                    }
                 }
-                busySlots.push({ batch: batch.Batch, date: dateStr, time: timeStr, subject: batch[key] });
+
+                if (slotDate) {
+                    if (slotDate < maxPast || slotDate > maxFuture) return;
+                    if (slotDate.toDateString() === now.toDateString()) isToday = true;
+                }
+
+                rawSlots.push({ batch: batch.Batch, date: dateStr, time: timeStr, subject: cellValue, source: batch._source, isToday: isToday, timestamp: slotDate ? slotDate.getTime() : 0 });
             }
         });
     });
-    if (!busySlots.length) return container.innerHTML = `<div class="teacher-free-card">✅ Teacher <b>${q}</b> is currently free in the schedule.</div>`;
-    const grouped = {};
-    busySlots.forEach(s => { if (!grouped[s.date]) grouped[s.date] = []; grouped[s.date].push(s); });
-    let html = `<div style="margin-bottom: 15px; font-weight:600; color: var(--hunter-green);">Schedule for: ${q}</div>`;
-    for (const [date, slots] of Object.entries(grouped)) {
-        const rows = slots.map(s => `<div class="class-row"><span class="time">${s.time}</span><span class="subject">${s.batch}</span><span class="room" style="background:var(--vanilla-cream); color:var(--hunter-green); border-color:var(--yellow-green);">${s.subject}</span></div>`).join('');
-        html += `<div class="schedule-card"><div class="card-body"><div class="date-group"><div class="date-header">📅 ${date}</div>${rows}</div></div></div>`;
-    }
+
+    if (!rawSlots.length) return container.innerHTML = `<div class="teacher-free-card" style="background:#fef2f2; border-color:#f87171; color:#991b1b;">❌ No classes found recently for <b>${q}</b>.</div>`;
+
+    let busySlots = [];
+    const groupedByTime = {};
+    
+    rawSlots.forEach(s => {
+        const hash = `${s.batch}-${s.date}-${s.time}`;
+        if(!groupedByTime[hash]) groupedByTime[hash] = [];
+        groupedByTime[hash].push(s);
+    });
+
+    Object.values(groupedByTime).forEach(slotsArray => {
+        const dailySlot = slotsArray.find(s => s.source === 'daily');
+        const weeklySlot = slotsArray.find(s => s.source === 'weekly');
+        
+        if(dailySlot && weeklySlot) {
+            dailySlot.showBadge = false; busySlots.push(dailySlot);
+        } else if (dailySlot) {
+            dailySlot.showBadge = true; dailySlot.badgeType = 'changed'; busySlots.push(dailySlot);
+        } else if (weeklySlot) {
+            weeklySlot.showBadge = false; busySlots.push(weeklySlot);
+        }
+    });
+
+    const todaySlots = []; const futureSlots = []; const pastSlots = [];
+    busySlots.forEach(s => {
+        if(s.isToday) todaySlots.push(s);
+        else if (s.timestamp > now.getTime()) futureSlots.push(s);
+        else pastSlots.push(s);
+    });
+
+    todaySlots.sort((a, b) => {
+        const timeA = a.time.includes('-') ? a.time.split('-')[0].trim() : a.time;
+        const timeB = b.time.includes('-') ? b.time.split('-')[0].trim() : b.time;
+        return new Date(`2000/01/01 ${timeA}`) - new Date(`2000/01/01 ${timeB}`);
+    });
+    futureSlots.sort((a, b) => a.timestamp - b.timestamp);
+    pastSlots.sort((a, b) => b.timestamp - a.timestamp);
+
+    let html = ''; let textForAI = ""; currentTeacherContext = `Search Target: ${rawInput}\n`;
+
+    const buildSection = (title, slotsArray, emoji) => {
+        if(slotsArray.length === 0) return '';
+        const grouped = {};
+        slotsArray.forEach(s => { if (!grouped[s.date]) grouped[s.date] = []; grouped[s.date].push(s); });
+        
+        let sectionHtml = `<h3 class="timeline-section-title">${emoji} ${title}</h3>`;
+        for (const [date, slots] of Object.entries(grouped)) {
+            currentTeacherContext += `Date: ${date}\n`;
+            const rows = slots.map(s => {
+                currentTeacherContext += `- Time: ${s.time}, Batch: ${s.batch}, Class: ${s.subject}, Source: ${s.source}\n`;
+                let badge = '';
+                if(s.showBadge && s.badgeType === 'changed') badge = `<span class="source-tag src-changed">Changed Today</span>`;
+                return `<div class="class-row" style="${s.isToday ? 'background: rgba(167, 201, 87, 0.1); border-radius: 8px; padding: 5px 10px; border-bottom: none; margin-bottom: 5px;' : ''}"><span class="time">${s.time}</span><span class="subject">${s.batch} ${badge}</span><span class="room" style="background:var(--vanilla-cream); color:var(--hunter-green); border-color:var(--yellow-green);">${s.subject}</span></div>`;
+            }).join('');
+            sectionHtml += `<div class="schedule-card"><div class="card-body"><div class="date-group"><div class="date-header">📅 ${date}</div>${rows}</div></div></div>`;
+        }
+        return sectionHtml;
+    };
+
+    html += buildSection('Today', todaySlots, '🌟');
+    html += buildSection('Upcoming', futureSlots, '🔮');
+    html += buildSection('Past (14 Days)', pastSlots, '🕰️');
+    
     container.innerHTML = html;
+
+    aiBox.classList.remove('hidden');
+    aiText.innerHTML = `<span style="animation: pulse 1.5s infinite opacity;">AI analyzing schedule details...</span>`;
+
+    aiDebounceTimer = setTimeout(async () => {
+        try {
+            const firstName = currentUserProfile ? currentUserProfile.name.split(' ')[0] : 'Student';
+            const prompt = `You are a helpful school AI. The student's name is ${firstName}. Current time: ${new Date().toLocaleString()}.
+Analyze this specific schedule for '${q}':
+${currentTeacherContext}
+
+INSTRUCTIONS:
+1. Greet the student by their first name.
+2. State how many classes are scheduled TODAY.
+3. If there are 'daily' source classes that differ from the norm, mention the schedule was updated today. If not, don't mention source tags.
+4. Be friendly and conversational. Maximum 3 sentences. No markdown/asterisks.`;
+
+            const aiResponse = await generateAIResponse(prompt, false);
+            aiText.textContent = aiResponse.replace(/\*/g, '');
+        } catch(e) { 
+            aiText.innerHTML = `<span style="color: #b91c1c;"><b>AI Error:</b> ${e.message}</span>`; 
+        }
+    }, 1500); 
 });
 
 // ==========================================
-// 7. THE SOCIAL NETWORK ENGINE
+// 9. GLOBAL AI CHAT ENGINE
 // ==========================================
+window.openAIChat = (isGlobal = false) => {
+    document.getElementById('aiChatWindow').classList.remove('hidden');
+    const firstName = currentUserProfile ? currentUserProfile.name.split(' ')[0] : 'Student';
+    
+    let sysContext = `System Context: You are a highly intelligent school AI and general knowledge assistant. The student's name is ${firstName}. Current time is ${new Date().toLocaleString()}.\n`;
+    if(!isGlobal) sysContext += `The student is currently looking at this timetable data:\n${currentTeacherContext}\n`;
+    sysContext += `Answer their questions helpfully. You can talk about the schedule, help with homework, or discuss general knowledge. Do not use markdown formatting.`;
 
+    aiConversationHistory = [
+        { role: "user", parts: [{ text: sysContext }] },
+        { role: "model", parts: [{ text: `Hello ${firstName}! How can I help you today?` }] }
+    ];
+    
+    document.getElementById('aiWelcomeMsg').textContent = `Hi ${firstName}! You can ask me about schedules, homework, or general knowledge!`;
+    document.getElementById('aiChatMessages').innerHTML = `<div class="msg-bubble msg-ai" id="aiWelcomeMsg">${document.getElementById('aiWelcomeMsg').textContent}</div>`;
+};
+
+window.closeAIChat = () => document.getElementById('aiChatWindow').classList.add('hidden');
+
+document.getElementById('aiChatInputForm').addEventListener('submit', async (e) => {
+    e.preventDefault(); 
+    const input = document.getElementById('aiChatMessageInput'); const text = input.value.trim(); 
+    if(!text) return; 
+    
+    const msgContainer = document.getElementById('aiChatMessages');
+    msgContainer.innerHTML += `<div class="msg-bubble msg-sent">${text}</div>`;
+    input.value = ''; msgContainer.scrollTop = msgContainer.scrollHeight;
+
+    aiConversationHistory.push({ role: "user", parts: [{ text: text }] });
+
+    const aiThinkingId = 'ai-typing-' + Date.now();
+    msgContainer.innerHTML += `<div id="${aiThinkingId}" class="msg-bubble msg-ai"><span style="animation: pulse 1s infinite;">Thinking...</span></div>`;
+    msgContainer.scrollTop = msgContainer.scrollHeight;
+
+    try {
+        const aiResponse = await generateAIResponse("", true, aiConversationHistory);
+        
+        document.getElementById(aiThinkingId).remove();
+        msgContainer.innerHTML += `<div class="msg-bubble msg-ai">${aiResponse.replace(/\*/g, '')}</div>`;
+        msgContainer.scrollTop = msgContainer.scrollHeight;
+        
+        aiConversationHistory.push({ role: "model", parts: [{ text: aiResponse }] });
+    } catch(e) { document.getElementById(aiThinkingId).textContent = "Sorry, both primary and backup AI servers are down."; }
+});
+
+// ==========================================
+// 10. SOCIAL NETWORK ENGINE & CHAT CONTROLS
+// ==========================================
 function initSocialEngine() {
-    if(!auth.currentUser) return;
-    const myUid = auth.currentUser.uid;
-
+    if(!auth.currentUser) return; const myUid = auth.currentUser.uid;
     const reqQuery = query(collection(db, "friendRequests"), where("receiverId", "==", myUid), where("status", "==", "pending"));
     requestsUnsubscribe = onSnapshot(reqQuery, async (snapshot) => {
-        const reqList = document.getElementById('friendRequestsList');
-        const reqArea = document.getElementById('friendRequestsArea');
+        const reqList = document.getElementById('friendRequestsList'); const reqArea = document.getElementById('friendRequestsArea');
         if (snapshot.empty) { reqArea.classList.add('hidden'); reqList.innerHTML = ''; return; }
-
-        reqArea.classList.remove('hidden');
-        let html = '';
+        reqArea.classList.remove('hidden'); let html = '';
         for (const docSnap of snapshot.docs) {
-            const reqData = docSnap.data();
-            const senderSnap = await getDoc(doc(db, "users", reqData.senderId));
+            const reqData = docSnap.data(); const senderSnap = await getDoc(doc(db, "users", reqData.senderId));
             if (senderSnap.exists()) {
                 const s = senderSnap.data();
-                html += `<div class="user-card"><div class="user-card-info"><img src="${s.profilePic}" class="user-card-img"><div class="user-card-details"><h4>${s.name}</h4><p>Class: ${s.studentClass}</p></div></div><button class="btn-small" onclick="acceptFriendRequest('${docSnap.id}', '${reqData.senderId}', '${s.name}', '${s.profilePic}')">Accept</button></div>`;
+                html += `<div class="user-card"><div class="user-card-info"><img src="${s.profilePic}" class="user-card-img"><div class="user-card-details"><h4>${s.name}</h4><p>Class: ${s.studentClass}</p></div></div><div style="display:flex; gap:5px;"><button class="btn-small" style="background:#ef4444;" onclick="rejectFriendRequest('${docSnap.id}')">✖</button><button class="btn-small" onclick="acceptFriendRequest('${docSnap.id}', '${reqData.senderId}', '${s.name}', '${s.profilePic}')">Accept</button></div></div>`;
+                if (LocalNotifications && document.hidden) {
+                    LocalNotifications.schedule({ notifications: [{ title: `New Friend Request`, body: `${s.name} sent you a request!`, id: Date.now() }] });
+                }
             }
         }
         reqList.innerHTML = html;
@@ -440,7 +622,6 @@ function initSocialEngine() {
     friendsUnsubscribe = onSnapshot(myFriendsRef, (snapshot) => {
         const fList = document.getElementById('friendsList');
         if (snapshot.empty) return fList.innerHTML = '<div class="sub-text">No friends yet. Search someone to connect!</div>';
-        
         let html = '';
         snapshot.forEach(docSnap => {
             const f = docSnap.data();
@@ -451,79 +632,61 @@ function initSocialEngine() {
 }
 
 document.getElementById('btnSearchUsers').addEventListener('click', async () => {
-    const phone = document.getElementById('socialSearchInput').value.trim();
-    const resDiv = document.getElementById('socialSearchResults');
+    const phone = document.getElementById('socialSearchInput').value.trim(); const resDiv = document.getElementById('socialSearchResults');
     if(phone.length < 10) return showError('socialSearchInput', 'Enter a valid 10-digit number');
-    
-    resDiv.innerHTML = '<div class="sub-text">Searching...</div>';
-    const q = query(collection(db, "users"), where("phone", "==", phone));
-    const snapshot = await getDocs(q);
-    
-    if(snapshot.empty) return resDiv.innerHTML = '<div class="sub-text">No user found with this number.</div>';
-    
+    resDiv.innerHTML = '<div class="sub-text">Searching...</div>'; const q = query(collection(db, "users"), where("phone", "==", phone)); const snapshot = await getDocs(q);
+    if(snapshot.empty) return resDiv.innerHTML = '<div class="sub-text">No user found.</div>';
     let html = '';
     snapshot.forEach(docSnap => {
-        if(docSnap.id === auth.currentUser.uid) return; 
-        const u = docSnap.data();
+        if(docSnap.id === auth.currentUser.uid) return; const u = docSnap.data();
         html += `<div class="user-card" style="margin-top: 15px; border-color: var(--sage-green);"><div class="user-card-info"><img src="${u.profilePic}" class="user-card-img"><div class="user-card-details"><h4>${u.name}</h4><p>Batch: ${u.batch}</p></div></div><button class="btn-small" onclick="sendFriendRequest('${docSnap.id}')">Add Friend</button></div>`;
     });
     resDiv.innerHTML = html || '<div class="sub-text">This is your own number!</div>';
 });
 
-window.sendFriendRequest = async (targetId) => {
-    try {
-        await addDoc(collection(db, "friendRequests"), { senderId: auth.currentUser.uid, receiverId: targetId, status: "pending", timestamp: serverTimestamp() });
-        document.getElementById('socialSearchResults').innerHTML = '<div class="success-msg">Friend request sent!</div>';
-    } catch(e) { alert("Failed to send request."); }
-};
-
-window.acceptFriendRequest = async (reqId, senderId, senderName, senderPic) => {
-    const myUid = auth.currentUser.uid;
-    try {
-        await updateDoc(doc(db, "friendRequests", reqId), { status: "accepted" });
-        await setDoc(doc(db, "users", myUid, "friends", senderId), { name: senderName, profilePic: senderPic });
-        await setDoc(doc(db, "users", senderId, "friends", myUid), { name: currentUserProfile.name, profilePic: currentUserProfile.profilePic });
-    } catch(e) { alert("Error accepting request."); }
-};
+window.sendFriendRequest = async (targetId) => { try { await addDoc(collection(db, "friendRequests"), { senderId: auth.currentUser.uid, receiverId: targetId, status: "pending", timestamp: serverTimestamp() }); document.getElementById('socialSearchResults').innerHTML = '<div class="success-msg">Friend request sent!</div>'; } catch(e) {} };
+window.rejectFriendRequest = async (reqId) => { try { await deleteDoc(doc(db, "friendRequests", reqId)); } catch(e) {} };
+window.acceptFriendRequest = async (reqId, senderId, senderName, senderPic) => { const myUid = auth.currentUser.uid; try { await updateDoc(doc(db, "friendRequests", reqId), { status: "accepted" }); await setDoc(doc(db, "users", myUid, "friends", senderId), { name: senderName, profilePic: senderPic }); await setDoc(doc(db, "users", senderId, "friends", myUid), { name: currentUserProfile.name, profilePic: currentUserProfile.profilePic }); } catch(e) {} };
 
 window.openChat = (friendId, friendName, friendPic) => {
-    currentChatFriendId = friendId;
-    document.getElementById('chatHeaderName').textContent = friendName;
-    document.getElementById('chatHeaderImg').src = friendPic;
-    document.getElementById('chatWindow').classList.remove('hidden');
-    
-    const myUid = auth.currentUser.uid;
-    const chatId = myUid < friendId ? `${myUid}_${friendId}` : `${friendId}_${myUid}`;
-    
+    currentChatFriendId = friendId; document.getElementById('chatHeaderName').textContent = friendName; document.getElementById('chatHeaderImg').src = friendPic; document.getElementById('chatWindow').classList.remove('hidden');
+    const myUid = auth.currentUser.uid; const chatId = myUid < friendId ? `${myUid}_${friendId}` : `${friendId}_${myUid}`;
     const q = query(collection(db, "chats", chatId, "messages"), orderBy("timestamp", "asc"));
+    let initialLoad = true;
+    
     activeChatUnsubscribe = onSnapshot(q, (snapshot) => {
-        const msgContainer = document.getElementById('chatMessages');
-        let html = '';
+        const msgContainer = document.getElementById('chatMessages'); let html = '';
+        if (!initialLoad) {
+            snapshot.docChanges().forEach(change => { 
+                if (change.type === 'added' && change.doc.data().senderId !== myUid) { 
+                    const audio = document.getElementById('msgSound'); if(audio) audio.play().catch(e=>{}); 
+                    if (LocalNotifications && document.hidden) {
+                        LocalNotifications.schedule({ notifications: [{ title: `Message from ${friendName}`, body: change.doc.data().text, id: Date.now() }] });
+                    }
+                } 
+            });
+        }
         snapshot.forEach(docSnap => {
-            const msg = docSnap.data();
-            const isMe = msg.senderId === myUid;
-            const timeStr = msg.timestamp ? new Date(msg.timestamp.toDate()).toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'}) : 'Sending...';
-            html += `<div class="msg-bubble ${isMe ? 'msg-sent' : 'msg-received'}">${msg.text}<span class="msg-time">${timeStr}</span></div>`;
+            const msg = docSnap.data(); const isMe = msg.senderId === myUid; const timeStr = msg.timestamp ? new Date(msg.timestamp.toDate()).toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'}) : 'Sending...';
+            const delBtn = isMe ? `<span onclick="deleteMessage('${docSnap.id}')" style="font-size:0.8rem; cursor:pointer; margin-left:8px; opacity:0.8;" title="Delete Message">🗑️</span>` : '';
+            html += `<div class="msg-bubble ${isMe ? 'msg-sent' : 'msg-received'}">${msg.text} ${delBtn}<span class="msg-time">${timeStr}</span></div>`;
         });
-        msgContainer.innerHTML = html;
-        msgContainer.scrollTop = msgContainer.scrollHeight; 
+        msgContainer.innerHTML = html; msgContainer.scrollTop = msgContainer.scrollHeight; initialLoad = false;
     });
 };
 
-window.closeChat = () => {
-    document.getElementById('chatWindow').classList.add('hidden');
-    currentChatFriendId = null;
-    if(activeChatUnsubscribe) activeChatUnsubscribe(); 
+window.closeChat = () => { document.getElementById('chatWindow').classList.add('hidden'); currentChatFriendId = null; if(activeChatUnsubscribe) activeChatUnsubscribe(); };
+document.getElementById('chatInputForm').addEventListener('submit', async (e) => { e.preventDefault(); const input = document.getElementById('chatMessageInput'); const text = input.value.trim(); if(!text || !currentChatFriendId) return; input.value = ''; const myUid = auth.currentUser.uid; const chatId = myUid < currentChatFriendId ? `${myUid}_${currentChatFriendId}` : `${currentChatFriendId}_${myUid}`; try { await addDoc(collection(db, "chats", chatId, "messages"), { text: text, senderId: myUid, timestamp: serverTimestamp() }); } catch(e) {} });
+window.deleteMessage = async (msgId) => { if(!currentChatFriendId || !confirm("Delete this message?")) return; const myUid = auth.currentUser.uid; const chatId = myUid < currentChatFriendId ? `${myUid}_${currentChatFriendId}` : `${currentChatFriendId}_${myUid}`; try { await deleteDoc(doc(db, "chats", chatId, "messages", msgId)); } catch(e) {} };
+
+window.clearChat = async () => {
+    if(!currentChatFriendId || !confirm("Clear entire chat history?")) return;
+    const myUid = auth.currentUser.uid; const chatId = myUid < currentChatFriendId ? `${myUid}_${currentChatFriendId}` : `${currentChatFriendId}_${myUid}`;
+    try { const q = query(collection(db, "chats", chatId, "messages")); const snapshot = await getDocs(q); snapshot.forEach(d => deleteDoc(doc(db, "chats", chatId, "messages", d.id))); } catch(e) {}
 };
 
-document.getElementById('chatInputForm').addEventListener('submit', async (e) => {
-    e.preventDefault();
-    const input = document.getElementById('chatMessageInput');
-    const text = input.value.trim();
-    if(!text || !currentChatFriendId) return;
-    input.value = ''; 
+window.removeFriend = async () => {
+    if(!currentChatFriendId || !confirm("Unfriend this person and delete chat?")) return;
     const myUid = auth.currentUser.uid;
-    const chatId = myUid < currentChatFriendId ? `${myUid}_${currentChatFriendId}` : `${currentChatFriendId}_${myUid}`;
-    try { await addDoc(collection(db, "chats", chatId, "messages"), { text: text, senderId: myUid, timestamp: serverTimestamp() }); } 
-    catch(e) { alert("Failed to send message."); }
-});
+    try { await deleteDoc(doc(db, "users", myUid, "friends", currentChatFriendId)); await deleteDoc(doc(db, "users", currentChatFriendId, "friends", myUid)); window.clearChat(); window.closeChat(); } catch(e) { }
+};

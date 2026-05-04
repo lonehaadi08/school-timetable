@@ -1,0 +1,42 @@
+name: Update Timetable Data
+
+# This tells GitHub WHEN to run the script
+on:
+  schedule:
+    # Runs every day at 1:00 AM UTC (which is morning in IST)
+    - cron: '0 1 * * *'
+  # This line lets you click a button on GitHub to run it manually whenever you want
+  workflow_dispatch:
+
+jobs:
+  update-data:
+    runs-on: ubuntu-latest
+
+    permissions:
+      contents: write
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.x'
+
+      - name: Install dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install requests
+
+      - name: Run Python script
+        run: python scripts/update_data.py
+
+      - name: Commit and Push changes
+        run: |
+          git config --global user.name "GitHub Actions Bot"
+          git config --global user.email "actions@github.com"
+          git add public/data.json
+          # Only commit if the data actually changed
+          git commit -m "Automated update: Refreshed timetable data" || echo "No changes to commit"
+          git push
