@@ -2,7 +2,7 @@
 // 1. FIREBASE, EMAILJS, CAPACITOR & API SETUP
 // ==========================================
 import { initializeApp } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-app.js";
-import { getAuth, createUserWithEmailAndPassword, signInWithEmailAndPassword, GoogleAuthProvider, signInWithPopup, onAuthStateChanged, signOut, sendPasswordResetEmail, setPersistence, browserLocalPersistence } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-auth.js";
+import { getAuth, createUserWithEmailAndPassword, signInWithEmailAndPassword, onAuthStateChanged, signOut, sendPasswordResetEmail, setPersistence, browserLocalPersistence } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-auth.js";
 import { getFirestore, doc, setDoc, getDoc, collection, query, where, getDocs, addDoc, onSnapshot, orderBy, serverTimestamp, updateDoc, deleteDoc } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore.js";
 
 const { LocalNotifications } = window.capacitorExports || window.Capacitor?.Plugins || {};
@@ -19,7 +19,6 @@ const firebaseConfig = {
 const app = initializeApp(firebaseConfig);
 const auth = getAuth(app);
 const db = getFirestore(app);
-const googleProvider = new GoogleAuthProvider();
 
 // FORCE FIREBASE TO SURVIVE "RECENT APPS" CLEAR
 setPersistence(auth, browserLocalPersistence);
@@ -170,7 +169,10 @@ window.setupFingerprint = async () => {
 
 window.promptFingerprint = async () => {
     try {
-        const credentialId = new Uint8Array(JSON.parse(localStorage.getItem('fpCredId')));
+        const credIdStr = localStorage.getItem('fpCredId');
+        if (!credIdStr) return;
+        
+        const credentialId = new Uint8Array(JSON.parse(credIdStr));
         const assertion = await navigator.credentials.get({
             publicKey: {
                 challenge: new Uint8Array(32),
@@ -265,8 +267,35 @@ document.getElementById('otpForm').addEventListener('submit', async (e) => {
 });
 
 document.getElementById('loginForm').addEventListener('submit', async (e) => { e.preventDefault(); try { await signInWithEmailAndPassword(auth, document.getElementById('loginEmail').value, document.getElementById('loginPassword').value); } catch (error) { showError('loginError', "Invalid email or password."); } });
+
+// NEW: Fingerprint Login Button Logic
+document.getElementById('btnFingerprintLogin').addEventListener('click', async () => { 
+    hideErrors();
+    const credIdStr = localStorage.getItem('fpCredId');
+    if (!credIdStr) {
+        showError('loginError', "Fingerprint not set up or browser cache was cleared. Please login with Email and Password.");
+        return;
+    }
+    try {
+        const credentialId = new Uint8Array(JSON.parse(credIdStr));
+        const assertion = await navigator.credentials.get({
+            publicKey: {
+                challenge: new Uint8Array(32),
+                allowCredentials: [{ id: credentialId, type: "public-key" }],
+                userVerification: "required"
+            }
+        });
+        if (assertion) {
+            sessionStorage.setItem('appUnlocked', 'true');
+            // If they are locked out on the login screen, we need to refresh to trigger the auth state check
+            window.location.reload(); 
+        }
+    } catch (error) { 
+        showError('loginError', "Fingerprint verification failed or was cancelled."); 
+    } 
+});
+
 document.getElementById('resetForm').addEventListener('submit', async (e) => { e.preventDefault(); hideErrors(); try { await sendPasswordResetEmail(auth, document.getElementById('resetEmail').value); document.getElementById('resetSuccess').textContent = "Reset link sent!"; document.getElementById('resetSuccess').classList.remove('hidden'); } catch (error) { showError('resetError', "Failed to send reset email."); } });
-document.getElementById('btnGoogleSignIn').addEventListener('click', async () => { try { await signInWithPopup(auth, googleProvider); } catch (error) { showError('loginError', "Google sign-in failed."); } });
 document.getElementById('logoutBtn').addEventListener('click', () => { sessionStorage.removeItem('appUnlocked'); signOut(auth); });
 
 document.getElementById('completeProfileForm').addEventListener('submit', async (e) => {
@@ -287,7 +316,6 @@ onAuthStateChanged(auth, async (user) => {
         document.getElementById('otpView').classList.add('hidden'); 
         authView.classList.add('hidden');
 
-        // CHECK IF FINGERPRINT IS ENABLED AND IF SESSION IS NEW
         const fpEnabled = localStorage.getItem('fingerprintEnabled') === 'true';
         const isUnlocked = sessionStorage.getItem('appUnlocked') === 'true';
         
