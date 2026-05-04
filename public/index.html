@@ -47,7 +47,6 @@
             <form id="loginForm" class="auth-form">
                 <h2>Welcome Back!</h2>
                 
-                <!-- NEW FINGERPRINT LOGIN BUTTON -->
                 <button type="button" id="btnFingerprintLogin" class="btn-google" style="color: var(--hunter-green); border-color: var(--sage-green);">
                     👆 Sign in with Fingerprint
                 </button>
@@ -135,8 +134,6 @@
         </div>
 
         <div id="appView" class="app-wrapper hidden">
-            
-            <div class="ai-fab" onclick="openAIChat(true)" title="Ask AI Anything">✨</div>
 
             <header class="app-header" style="display: flex; justify-content: space-between; align-items: center;">
                 <div class="brand">
@@ -162,6 +159,14 @@
             <main class="content-scroll pb-nav">
                 
                 <div id="tabMySchedule" class="tab-content fade-in">
+                    
+                    <!-- NEW: QUICK BATCH DROPDOWN -->
+                    <div style="margin-bottom: 15px;">
+                        <select id="myScheduleBatchSelect" style="width: 100%; padding: 12px 15px; border-radius: 12px; border: 1px solid rgba(167, 201, 87, 0.5); background: #fafaf5; font-size: 1rem; font-weight: 700; color: var(--hunter-green); outline: none; box-shadow: 0 2px 5px rgba(0,0,0,0.02);">
+                            <option value="">Loading Batches...</option>
+                        </select>
+                    </div>
+
                     <div class="view-toggles" style="display: flex; gap: 10px;">
                         <button class="pill active" id="btnDailyMy" onclick="switchTimeView('daily')" style="flex: 1;">Daily View</button>
                         <button class="pill" id="btnWeeklyMy" onclick="switchTimeView('weekly')" style="flex: 1;">Weekly Plan</button>
@@ -183,19 +188,6 @@
                         <input type="text" id="teacherInput" placeholder="Enter Teacher Code or Date (e.g., 21 Apr)..." autocomplete="off" maxlength="15" style="flex: 1;">
                         <button onclick="downloadPDF('teacherResults', 'Teacher_Schedule')" class="btn-primary" style="padding: 10px 15px;"><span style="font-size: 1rem;">⬇️</span> PDF</button>
                     </div>
-                    
-                    <div id="aiSummaryBox" class="hidden" style="background: linear-gradient(135deg, #f0fdf4 0%, #e0f2fe 100%); border: 1px solid #bae6fd; padding: 15px; border-radius: 12px; margin-bottom: 20px; box-shadow: 0 4px 15px rgba(0,0,0,0.05);">
-                        <div style="display:flex; justify-content: space-between; align-items: center; margin-bottom: 8px;">
-                            <strong style="color: #0369a1; display:flex; align-items:center; gap:8px; font-size: 0.95rem;">
-                                ✨ AI Schedule Analysis
-                            </strong>
-                            <button onclick="openAIChat(false)" style="background: #0284c7; color: white; border: none; padding: 5px 10px; border-radius: 8px; font-size: 0.8rem; cursor: pointer; font-weight: bold; box-shadow: 0 2px 5px rgba(2, 132, 199, 0.3);">
-                                💬 Chat
-                            </button>
-                        </div>
-                        <div id="aiSummaryText" style="font-size: 0.9rem; color: #0f172a; line-height: 1.5;">Analyzing schedule...</div>
-                    </div>
-
                     <div id="teacherResults"><div class="welcome-msg">Search a teacher to see their timeline.</div></div>
                 </div>
 
@@ -234,7 +226,7 @@
                         </div>
                         
                         <div class="profile-details">
-                            <div class="detail-item"><span>Batch</span><strong id="profileBatch">...</strong></div>
+                            <div class="detail-item"><span>Permanent Batch</span><strong id="profileBatch">...</strong></div>
                             <div class="detail-item"><span>Aim</span><strong id="profileAim">...</strong></div>
                         </div>
 
@@ -295,24 +287,6 @@
             <form id="chatInputForm" class="chat-input-area">
                 <input type="text" id="chatMessageInput" placeholder="Type a message..." required autocomplete="off">
                 <button type="submit" class="btn-primary" style="padding: 10px 15px; border-radius: 50%;">✈️</button>
-            </form>
-        </div>
-
-        <div id="aiChatWindow" class="chat-overlay hidden">
-            <div class="chat-header" style="background: linear-gradient(135deg, #0284c7 0%, #0369a1 100%);">
-                <button class="btn-icon" onclick="closeAIChat()" style="background:transparent; color:white; border:none; font-size:1.5rem; cursor:pointer;">⬅️</button>
-                <div style="font-size: 2rem; margin-right: 10px;">✨</div>
-                <div style="flex:1;">
-                    <h3 style="color: white; margin:0;">Gemini AI</h3>
-                    <div style="font-size: 0.7rem; color: #e0f2fe;">Ask me anything!</div>
-                </div>
-            </div>
-            <div id="aiChatMessages" class="chat-messages content-scroll">
-                <div class="msg-bubble msg-ai" id="aiWelcomeMsg">Hi! I am Gemini. You can ask me about schedules, homework, or general knowledge!</div>
-            </div>
-            <form id="aiChatInputForm" class="chat-input-area">
-                <input type="text" id="aiChatMessageInput" placeholder="Ask me anything..." required autocomplete="off">
-                <button type="submit" class="btn-primary" style="background: #0284c7; padding: 10px 15px; border-radius: 50%;">✨</button>
             </form>
         </div>
 

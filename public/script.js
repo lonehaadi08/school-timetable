@@ -27,8 +27,6 @@ const DEFAULT_AVATAR = "data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/
 
 emailjs.init("eV9GmBZdy2ByqSZmw");
 const IMGBB_API_KEY = "d7a0fd403ed8a561aab9d2b6d2961e9d";
-const GEMINI_API_KEY = "AIzaSyAtuXIxgecoRWauk71Fb6uEgDPNFCXXGgs";
-const GROQ_API_KEY = "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"; 
 const DATA_URL = 'https://raw.githubusercontent.com/lonehaadi08/school-timetable/main/public/data.json';
 
 let timetableData = { daily: [], weekly: [] };
@@ -38,41 +36,8 @@ let myScheduleTimeView = 'daily';
 let generatedOTP = null; let pendingRegistrationData = null; let pendingProfilePicFile = null;
 let activeChatUnsubscribe = null; let requestsUnsubscribe = null; let friendsUnsubscribe = null; let currentChatFriendId = null;
 
-let aiConversationHistory = [];
-let currentTeacherContext = "";
-
 // ==========================================
-// 2. DUAL-ENGINE AI FALLBACK SYSTEM
-// ==========================================
-async function generateAIResponse(prompt, isChat = false, history = []) {
-    let geminiContents = isChat ? history : [{ role: "user", parts: [{ text: prompt }] }];
-    try {
-        const geminiRes = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${GEMINI_API_KEY}`, {
-            method: "POST", headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({ contents: geminiContents, generationConfig: { temperature: 0.4 } })
-        });
-        const geminiData = await geminiRes.json();
-        if (geminiRes.ok && geminiData.candidates) return geminiData.candidates[0].content.parts[0].text;
-    } catch (e) {}
-
-    try {
-        let groqMessages = isChat 
-            ? history.map(h => ({ role: h.role === "model" ? "assistant" : "user", content: h.parts[0].text })) 
-            : [{ role: "user", content: prompt }];
-
-        const groqRes = await fetch("https://api.groq.com/openai/v1/chat/completions", {
-            method: "POST",
-            headers: { "Authorization": `Bearer ${GROQ_API_KEY}`, "Content-Type": "application/json" },
-            body: JSON.stringify({ model: "llama3-8b-8192", messages: groqMessages, temperature: 0.4 })
-        });
-        const groqData = await groqRes.json();
-        if (groqRes.ok && groqData.choices) return groqData.choices[0].message.content;
-        throw new Error("Both AI engines failed.");
-    } catch (e) { throw e; }
-}
-
-// ==========================================
-// 3. UI UTILITIES & PROFILE LIVE EDITS
+// 2. UI UTILITIES & PROFILE LIVE EDITS
 // ==========================================
 window.toggleAuth = (view) => {
     document.getElementById('loginForm').classList.toggle('hidden', view !== 'login');
@@ -114,6 +79,9 @@ window.forceRefreshApp = async () => {
     try {
         const res = await fetch(`${DATA_URL}?bust=${new Date().getTime()}`, { cache: "no-store" }); 
         timetableData = await res.json(); window.timetableData = timetableData;
+        populateBatchDropdown();
+        // Reset dropdown to permanent batch on refresh
+        if (currentUserProfile) document.getElementById('myScheduleBatchSelect').value = currentUserProfile.batch;
         renderMySchedule();
         const tInput = document.getElementById('teacherInput'); 
         if(tInput && tInput.value) tInput.dispatchEvent(new Event('input'));
@@ -124,13 +92,21 @@ window.forceRefreshApp = async () => {
 window.downloadPDF = (elementId, filename) => {
     const element = document.getElementById(elementId);
     if(element.innerText.includes("Start typing") || element.innerText.includes("Loading") || element.innerText.includes("❌")) return alert("Search for valid data first before exporting to PDF!");
+    
+    // Check if dropdown is used to name the file properly
+    let activeBatch = "";
+    if(elementId === 'myScheduleResults') {
+        activeBatch = document.getElementById('myScheduleBatchSelect').value;
+    }
+    const safeFilename = activeBatch ? `${filename}_${activeBatch}` : filename;
+
     const dateStr = new Date().toLocaleDateString().replace(/\//g, '-');
-    const opt = { margin: 0.5, filename: `${filename}_${dateStr}.pdf`, image: { type: 'jpeg', quality: 0.98 }, html2canvas: { scale: 2, useCORS: true, allowTaint: true }, jsPDF: { unit: 'in', format: 'letter', orientation: 'portrait' } };
+    const opt = { margin: 0.5, filename: `${safeFilename}_${dateStr}.pdf`, image: { type: 'jpeg', quality: 0.98 }, html2canvas: { scale: 2, useCORS: true, allowTaint: true }, jsPDF: { unit: 'in', format: 'letter', orientation: 'portrait' } };
     html2pdf().set(opt).from(element).save();
 };
 
 // ==========================================
-// 4. BIOMETRIC (FINGERPRINT) ENGINE
+// 3. BIOMETRIC (FINGERPRINT) ENGINE
 // ==========================================
 window.setupFingerprint = async () => {
     if (localStorage.getItem('fingerprintEnabled') === 'true') {
@@ -243,7 +219,7 @@ window.removeProfilePic = async () => {
 };
 
 // ==========================================
-// 5. OTP REGISTRATION & AUTH
+// 4. OTP REGISTRATION & AUTH
 // ==========================================
 document.getElementById('registerForm').addEventListener('submit', async (e) => {
     e.preventDefault(); hideErrors(); const btn = document.getElementById('btnTriggerOTP'); btn.textContent = "Sending OTP..."; btn.disabled = true;
@@ -268,7 +244,6 @@ document.getElementById('otpForm').addEventListener('submit', async (e) => {
 
 document.getElementById('loginForm').addEventListener('submit', async (e) => { e.preventDefault(); try { await signInWithEmailAndPassword(auth, document.getElementById('loginEmail').value, document.getElementById('loginPassword').value); } catch (error) { showError('loginError', "Invalid email or password."); } });
 
-// NEW: Fingerprint Login Button Logic
 document.getElementById('btnFingerprintLogin').addEventListener('click', async () => { 
     hideErrors();
     const credIdStr = localStorage.getItem('fpCredId');
@@ -287,7 +262,6 @@ document.getElementById('btnFingerprintLogin').addEventListener('click', async (
         });
         if (assertion) {
             sessionStorage.setItem('appUnlocked', 'true');
-            // If they are locked out on the login screen, we need to refresh to trigger the auth state check
             window.location.reload(); 
         }
     } catch (error) { 
@@ -304,7 +278,7 @@ document.getElementById('completeProfileForm').addEventListener('submit', async 
 });
 
 // ==========================================
-// 6. APP INIT & BIOMETRIC GATEWAY
+// 5. APP INIT & BIOMETRIC GATEWAY
 // ==========================================
 onAuthStateChanged(auth, async (user) => {
     const loader = document.getElementById('initialLoader'); 
@@ -334,7 +308,11 @@ onAuthStateChanged(auth, async (user) => {
             
             document.getElementById('fpBtn').innerHTML = fpEnabled ? "🔓 Disable Fingerprint Lock" : "🔒 Enable Fingerprint Lock";
 
-            await fetchTimetableData(); renderMySchedule(); checkForRTS(); initSocialEngine(); 
+            await fetchTimetableData(); 
+            renderMySchedule(); 
+            checkForRTS(); 
+            initSocialEngine(); 
+            
             loader.classList.add('hidden'); 
             lockScreenView.classList.add('hidden');
             appView.classList.remove('hidden');
@@ -354,7 +332,12 @@ onAuthStateChanged(auth, async (user) => {
 });
 
 async function fetchTimetableData() {
-    try { const res = await fetch(`${DATA_URL}?t=${new Date().getTime()}`, { cache: "no-store" }); timetableData = await res.json(); window.timetableData = timetableData; } 
+    try { 
+        const res = await fetch(`${DATA_URL}?t=${new Date().getTime()}`, { cache: "no-store" }); 
+        timetableData = await res.json(); 
+        window.timetableData = timetableData; 
+        populateBatchDropdown(); // Fill dropdown options
+    } 
     catch (e) { document.getElementById('myScheduleResults').innerHTML = '<div class="error-msg">Failed to load timetable. Check your connection.</div>'; }
 }
 
@@ -387,14 +370,45 @@ async function checkForRTS() {
 }
 
 // ==========================================
-// 7. ALL BATCHES SEARCH
+// 6. ALL BATCHES & DROPDOWN SCHEDULING
 // ==========================================
+function populateBatchDropdown() {
+    const select = document.getElementById('myScheduleBatchSelect');
+    if (!timetableData.weekly || timetableData.weekly.length === 0) return;
+    
+    // Get unique batch names and sort them alphabetically
+    const batches = [...new Set(timetableData.weekly.map(b => b.Batch).filter(Boolean))].sort();
+    
+    let html = '';
+    batches.forEach(b => { html += `<option value="${b}">${b}</option>`; });
+    select.innerHTML = html;
+    
+    // Default to user's profile batch
+    if (currentUserProfile && currentUserProfile.batch) {
+        select.value = currentUserProfile.batch;
+    }
+}
+
+// Listen for dropdown changes
+document.getElementById('myScheduleBatchSelect').addEventListener('change', () => {
+    renderMySchedule();
+});
+
 function renderMySchedule() {
-    if (!currentUserProfile) return;
+    const select = document.getElementById('myScheduleBatchSelect');
+    let activeBatch = select.value || (currentUserProfile ? currentUserProfile.batch : null);
+    
+    if (!activeBatch) return;
+
     const dataSet = myScheduleTimeView === 'daily' ? timetableData.daily : timetableData.weekly;
-    const mySchedule = dataSet.find(b => String(b.Batch).toUpperCase() === currentUserProfile.batch);
+    const mySchedule = dataSet.find(b => String(b.Batch).toUpperCase() === String(activeBatch).toUpperCase());
     const container = document.getElementById('myScheduleResults');
-    if (!mySchedule) { container.innerHTML = `<div class="welcome-msg">No classes scheduled.</div>`; } else { container.innerHTML = createCardHTML(mySchedule, 0); }
+    
+    if (!mySchedule) { 
+        container.innerHTML = `<div class="welcome-msg">No classes scheduled for <b>${activeBatch}</b>.</div>`; 
+    } else { 
+        container.innerHTML = createCardHTML(mySchedule, 0); 
+    }
 }
 
 document.getElementById('batchInput').addEventListener('input', (e) => {
@@ -428,18 +442,13 @@ function createCardHTML(item, index) {
 }
 
 // ==========================================
-// 8. TIMELINE & AI EXPERT
+// 7. TEACHER TIMELINE
 // ==========================================
-let aiDebounceTimer = null;
-
 document.getElementById('teacherInput').addEventListener('input', (e) => {
     const rawInput = e.target.value.trim().toUpperCase(); 
     const q = rawInput.replace(/[^A-Z0-9\s]/g, ''); 
     const container = document.getElementById('teacherResults'); 
-    const aiBox = document.getElementById('aiSummaryBox'); 
-    const aiText = document.getElementById('aiSummaryText');
     
-    clearTimeout(aiDebounceTimer); aiBox.classList.add('hidden');
     if (q.length < 2) return container.innerHTML = '<div class="welcome-msg">Search teacher code or date (e.g., FN, 21 Apr)...</div>';
 
     let rawSlots = []; 
@@ -524,7 +533,7 @@ document.getElementById('teacherInput').addEventListener('input', (e) => {
     futureSlots.sort((a, b) => a.timestamp - b.timestamp);
     pastSlots.sort((a, b) => b.timestamp - a.timestamp);
 
-    let html = ''; let textForAI = ""; currentTeacherContext = `Search Target: ${rawInput}\n`;
+    let html = '';
 
     const buildSection = (title, slotsArray, emoji) => {
         if(slotsArray.length === 0) return '';
@@ -533,9 +542,7 @@ document.getElementById('teacherInput').addEventListener('input', (e) => {
         
         let sectionHtml = `<h3 class="timeline-section-title">${emoji} ${title}</h3>`;
         for (const [date, slots] of Object.entries(grouped)) {
-            currentTeacherContext += `Date: ${date}\n`;
             const rows = slots.map(s => {
-                currentTeacherContext += `- Time: ${s.time}, Batch: ${s.batch}, Class: ${s.subject}, Source: ${s.source}\n`;
                 let badge = '';
                 if(s.showBadge && s.badgeType === 'changed') badge = `<span class="source-tag src-changed">Changed Today</span>`;
                 return `<div class="class-row" style="${s.isToday ? 'background: rgba(167, 201, 87, 0.1); border-radius: 8px; padding: 5px 10px; border-bottom: none; margin-bottom: 5px;' : ''}"><span class="time">${s.time}</span><span class="subject">${s.batch} ${badge}</span><span class="room" style="background:var(--vanilla-cream); color:var(--hunter-green); border-color:var(--yellow-green);">${s.subject}</span></div>`;
@@ -550,81 +557,10 @@ document.getElementById('teacherInput').addEventListener('input', (e) => {
     html += buildSection('Past (14 Days)', pastSlots, '🕰️');
     
     container.innerHTML = html;
-
-    aiBox.classList.remove('hidden');
-    aiText.innerHTML = `<span style="animation: pulse 1.5s infinite opacity;">AI analyzing schedule details...</span>`;
-
-    aiDebounceTimer = setTimeout(async () => {
-        try {
-            const firstName = currentUserProfile ? currentUserProfile.name.split(' ')[0] : 'Student';
-            const prompt = `You are a helpful school AI. The student's name is ${firstName}. Current time: ${new Date().toLocaleString()}.
-Analyze this specific schedule for '${q}':
-${currentTeacherContext}
-
-INSTRUCTIONS:
-1. Greet the student by their first name.
-2. State how many classes are scheduled TODAY.
-3. If there are 'daily' source classes that differ from the norm, mention the schedule was updated today. If not, don't mention source tags.
-4. Be friendly and conversational. Maximum 3 sentences. No markdown/asterisks.`;
-
-            const aiResponse = await generateAIResponse(prompt, false);
-            aiText.textContent = aiResponse.replace(/\*/g, '');
-        } catch(e) { 
-            aiText.innerHTML = `<span style="color: #b91c1c;"><b>AI Error:</b> ${e.message}</span>`; 
-        }
-    }, 1500); 
 });
 
 // ==========================================
-// 9. GLOBAL AI CHAT ENGINE
-// ==========================================
-window.openAIChat = (isGlobal = false) => {
-    document.getElementById('aiChatWindow').classList.remove('hidden');
-    const firstName = currentUserProfile ? currentUserProfile.name.split(' ')[0] : 'Student';
-    
-    let sysContext = `System Context: You are a highly intelligent school AI and general knowledge assistant. The student's name is ${firstName}. Current time is ${new Date().toLocaleString()}.\n`;
-    if(!isGlobal) sysContext += `The student is currently looking at this timetable data:\n${currentTeacherContext}\n`;
-    sysContext += `Answer their questions helpfully. You can talk about the schedule, help with homework, or discuss general knowledge. Do not use markdown formatting.`;
-
-    aiConversationHistory = [
-        { role: "user", parts: [{ text: sysContext }] },
-        { role: "model", parts: [{ text: `Hello ${firstName}! How can I help you today?` }] }
-    ];
-    
-    document.getElementById('aiWelcomeMsg').textContent = `Hi ${firstName}! You can ask me about schedules, homework, or general knowledge!`;
-    document.getElementById('aiChatMessages').innerHTML = `<div class="msg-bubble msg-ai" id="aiWelcomeMsg">${document.getElementById('aiWelcomeMsg').textContent}</div>`;
-};
-
-window.closeAIChat = () => document.getElementById('aiChatWindow').classList.add('hidden');
-
-document.getElementById('aiChatInputForm').addEventListener('submit', async (e) => {
-    e.preventDefault(); 
-    const input = document.getElementById('aiChatMessageInput'); const text = input.value.trim(); 
-    if(!text) return; 
-    
-    const msgContainer = document.getElementById('aiChatMessages');
-    msgContainer.innerHTML += `<div class="msg-bubble msg-sent">${text}</div>`;
-    input.value = ''; msgContainer.scrollTop = msgContainer.scrollHeight;
-
-    aiConversationHistory.push({ role: "user", parts: [{ text: text }] });
-
-    const aiThinkingId = 'ai-typing-' + Date.now();
-    msgContainer.innerHTML += `<div id="${aiThinkingId}" class="msg-bubble msg-ai"><span style="animation: pulse 1s infinite;">Thinking...</span></div>`;
-    msgContainer.scrollTop = msgContainer.scrollHeight;
-
-    try {
-        const aiResponse = await generateAIResponse("", true, aiConversationHistory);
-        
-        document.getElementById(aiThinkingId).remove();
-        msgContainer.innerHTML += `<div class="msg-bubble msg-ai">${aiResponse.replace(/\*/g, '')}</div>`;
-        msgContainer.scrollTop = msgContainer.scrollHeight;
-        
-        aiConversationHistory.push({ role: "model", parts: [{ text: aiResponse }] });
-    } catch(e) { document.getElementById(aiThinkingId).textContent = "Sorry, both primary and backup AI servers are down."; }
-});
-
-// ==========================================
-// 10. SOCIAL NETWORK ENGINE & CHAT CONTROLS
+// 8. SOCIAL NETWORK ENGINE & CHAT CONTROLS
 // ==========================================
 function initSocialEngine() {
     if(!auth.currentUser) return; const myUid = auth.currentUser.uid;
