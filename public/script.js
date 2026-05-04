@@ -2,7 +2,7 @@
 // 1. FIREBASE, EMAILJS, CAPACITOR & API SETUP
 // ==========================================
 import { initializeApp } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-app.js";
-import { getAuth, createUserWithEmailAndPassword, signInWithEmailAndPassword, GoogleAuthProvider, signInWithPopup, onAuthStateChanged, signOut, sendPasswordResetEmail } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-auth.js";
+import { getAuth, createUserWithEmailAndPassword, signInWithEmailAndPassword, GoogleAuthProvider, signInWithPopup, onAuthStateChanged, signOut, sendPasswordResetEmail, setPersistence, browserLocalPersistence } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-auth.js";
 import { getFirestore, doc, setDoc, getDoc, collection, query, where, getDocs, addDoc, onSnapshot, orderBy, serverTimestamp, updateDoc, deleteDoc } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore.js";
 
 const { LocalNotifications } = window.capacitorExports || window.Capacitor?.Plugins || {};
@@ -21,12 +21,15 @@ const auth = getAuth(app);
 const db = getFirestore(app);
 const googleProvider = new GoogleAuthProvider();
 
+// FORCE FIREBASE TO SURVIVE "RECENT APPS" CLEAR
+setPersistence(auth, browserLocalPersistence);
+
 const DEFAULT_AVATAR = "data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='%23526b58'%3E%3Cpath d='M12 12c2.21 0 4-1.79 4-4s-1.79-4-4-4-4 1.79-4 4 1.79 4 4 4zm0 2c-2.67 0-8 1.34-8 4v2h16v-2c0-2.66-5.33-4-8-4z'/%3E%3C/svg%3E";
 
 emailjs.init("eV9GmBZdy2ByqSZmw");
 const IMGBB_API_KEY = "d7a0fd403ed8a561aab9d2b6d2961e9d";
 const GEMINI_API_KEY = "AIzaSyAtuXIxgecoRWauk71Fb6uEgDPNFCXXGgs";
-const GROQ_API_KEY = "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"; // Your Groq Fallback Key!
+const GROQ_API_KEY = "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"; 
 const DATA_URL = 'https://raw.githubusercontent.com/lonehaadi08/school-timetable/main/public/data.json';
 
 let timetableData = { daily: [], weekly: [] };
@@ -43,7 +46,6 @@ let currentTeacherContext = "";
 // 2. DUAL-ENGINE AI FALLBACK SYSTEM
 // ==========================================
 async function generateAIResponse(prompt, isChat = false, history = []) {
-    // 1. Try Gemini 1.5 Flash First
     let geminiContents = isChat ? history : [{ role: "user", parts: [{ text: prompt }] }];
     try {
         const geminiRes = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${GEMINI_API_KEY}`, {
@@ -52,10 +54,8 @@ async function generateAIResponse(prompt, isChat = false, history = []) {
         });
         const geminiData = await geminiRes.json();
         if (geminiRes.ok && geminiData.candidates) return geminiData.candidates[0].content.parts[0].text;
-        console.warn("Gemini Quota/Error:", geminiData.error);
-    } catch (e) { console.warn("Gemini Network Error:", e); }
+    } catch (e) {}
 
-    // 2. Fallback to Groq Llama 3
     try {
         let groqMessages = isChat 
             ? history.map(h => ({ role: h.role === "model" ? "assistant" : "user", content: h.parts[0].text })) 
@@ -68,7 +68,7 @@ async function generateAIResponse(prompt, isChat = false, history = []) {
         });
         const groqData = await groqRes.json();
         if (groqRes.ok && groqData.choices) return groqData.choices[0].message.content;
-        throw new Error(groqData.error?.message || "Both AI engines failed.");
+        throw new Error("Both AI engines failed.");
     } catch (e) { throw e; }
 }
 
@@ -113,7 +113,7 @@ function showError(id, msg) { const el = document.getElementById(id); el.textCon
 
 window.forceRefreshApp = async () => {
     try {
-        const res = await fetch(`${DATA_URL}?bust=${new Date().getTime()}`); 
+        const res = await fetch(`${DATA_URL}?bust=${new Date().getTime()}`, { cache: "no-store" }); 
         timetableData = await res.json(); window.timetableData = timetableData;
         renderMySchedule();
         const tInput = document.getElementById('teacherInput'); 
@@ -128,6 +128,67 @@ window.downloadPDF = (elementId, filename) => {
     const dateStr = new Date().toLocaleDateString().replace(/\//g, '-');
     const opt = { margin: 0.5, filename: `${filename}_${dateStr}.pdf`, image: { type: 'jpeg', quality: 0.98 }, html2canvas: { scale: 2, useCORS: true, allowTaint: true }, jsPDF: { unit: 'in', format: 'letter', orientation: 'portrait' } };
     html2pdf().set(opt).from(element).save();
+};
+
+// ==========================================
+// 4. BIOMETRIC (FINGERPRINT) ENGINE
+// ==========================================
+window.setupFingerprint = async () => {
+    if (localStorage.getItem('fingerprintEnabled') === 'true') {
+        localStorage.removeItem('fingerprintEnabled');
+        localStorage.removeItem('fpCredId');
+        alert("Fingerprint lock disabled.");
+        document.getElementById('fpBtn').innerHTML = "🔒 Enable Fingerprint Lock";
+        return;
+    }
+    
+    if (!window.PublicKeyCredential) return alert("Biometrics not supported on this device/browser.");
+
+    try {
+        const challenge = new Uint8Array(32); window.crypto.getRandomValues(challenge);
+        const userId = new Uint8Array(16); window.crypto.getRandomValues(userId);
+        const cred = await navigator.credentials.create({
+            publicKey: {
+                challenge: challenge,
+                rp: { name: "Student Portal", id: window.location.hostname },
+                user: { id: userId, name: currentUserProfile.email, displayName: currentUserProfile.name },
+                pubKeyCredParams: [{ type: "public-key", alg: -7 }],
+                authenticatorSelection: { authenticatorAttachment: "platform", userVerification: "required" },
+                timeout: 60000,
+            }
+        });
+        if (cred) {
+            localStorage.setItem('fingerprintEnabled', 'true');
+            localStorage.setItem('fpCredId', JSON.stringify(Array.from(new Uint8Array(cred.rawId))));
+            alert("Fingerprint lock enabled successfully! Next time you clear the app, you will be asked to unlock.");
+            document.getElementById('fpBtn').innerHTML = "🔓 Disable Fingerprint Lock";
+        }
+    } catch (e) {
+        alert("Setup failed. Ensure your device has a screen lock/fingerprint set up.");
+    }
+};
+
+window.promptFingerprint = async () => {
+    try {
+        const credentialId = new Uint8Array(JSON.parse(localStorage.getItem('fpCredId')));
+        const assertion = await navigator.credentials.get({
+            publicKey: {
+                challenge: new Uint8Array(32),
+                allowCredentials: [{ id: credentialId, type: "public-key" }],
+                userVerification: "required"
+            }
+        });
+        if (assertion) {
+            sessionStorage.setItem('appUnlocked', 'true'); // Survives refresh, dies on force-close
+            window.location.reload(); 
+        }
+    } catch (e) {}
+};
+
+window.logoutFromLock = () => {
+    sessionStorage.removeItem('appUnlocked');
+    signOut(auth);
+    window.location.reload();
 };
 
 window.setCustomReminder = async () => {
@@ -180,7 +241,7 @@ window.removeProfilePic = async () => {
 };
 
 // ==========================================
-// 4. OTP REGISTRATION & AUTH
+// 5. OTP REGISTRATION & AUTH
 // ==========================================
 document.getElementById('registerForm').addEventListener('submit', async (e) => {
     e.preventDefault(); hideErrors(); const btn = document.getElementById('btnTriggerOTP'); btn.textContent = "Sending OTP..."; btn.disabled = true;
@@ -206,7 +267,7 @@ document.getElementById('otpForm').addEventListener('submit', async (e) => {
 document.getElementById('loginForm').addEventListener('submit', async (e) => { e.preventDefault(); try { await signInWithEmailAndPassword(auth, document.getElementById('loginEmail').value, document.getElementById('loginPassword').value); } catch (error) { showError('loginError', "Invalid email or password."); } });
 document.getElementById('resetForm').addEventListener('submit', async (e) => { e.preventDefault(); hideErrors(); try { await sendPasswordResetEmail(auth, document.getElementById('resetEmail').value); document.getElementById('resetSuccess').textContent = "Reset link sent!"; document.getElementById('resetSuccess').classList.remove('hidden'); } catch (error) { showError('resetError', "Failed to send reset email."); } });
 document.getElementById('btnGoogleSignIn').addEventListener('click', async () => { try { await signInWithPopup(auth, googleProvider); } catch (error) { showError('loginError', "Google sign-in failed."); } });
-document.getElementById('logoutBtn').addEventListener('click', () => { signOut(auth); });
+document.getElementById('logoutBtn').addEventListener('click', () => { sessionStorage.removeItem('appUnlocked'); signOut(auth); });
 
 document.getElementById('completeProfileForm').addEventListener('submit', async (e) => {
     e.preventDefault(); const user = auth.currentUser;
@@ -214,26 +275,59 @@ document.getElementById('completeProfileForm').addEventListener('submit', async 
 });
 
 // ==========================================
-// 5. APP INIT
+// 6. APP INIT & BIOMETRIC GATEWAY
 // ==========================================
 onAuthStateChanged(auth, async (user) => {
-    const loader = document.getElementById('initialLoader'); const authView = document.getElementById('authView');
+    const loader = document.getElementById('initialLoader'); 
+    const authView = document.getElementById('authView');
+    const appView = document.getElementById('appView');
+    const lockScreenView = document.getElementById('lockScreenView');
+
     if (user) {
-        document.getElementById('otpView').classList.add('hidden'); authView.classList.add('hidden');
+        document.getElementById('otpView').classList.add('hidden'); 
+        authView.classList.add('hidden');
+
+        // CHECK IF FINGERPRINT IS ENABLED AND IF SESSION IS NEW
+        const fpEnabled = localStorage.getItem('fingerprintEnabled') === 'true';
+        const isUnlocked = sessionStorage.getItem('appUnlocked') === 'true';
+        
+        if (fpEnabled && !isUnlocked) {
+            loader.classList.add('hidden');
+            appView.classList.add('hidden');
+            lockScreenView.classList.remove('hidden');
+            window.promptFingerprint(); 
+            return;
+        }
+
         const docSnap = await getDoc(doc(db, "users", user.uid));
         if (docSnap.exists()) {
             currentUserProfile = docSnap.data();
             document.getElementById('profileName').textContent = currentUserProfile.name; document.getElementById('profileEmail').textContent = currentUserProfile.email; document.getElementById('profileBatch').textContent = currentUserProfile.batch; document.getElementById('profileAim').textContent = currentUserProfile.aim || "N/A"; document.getElementById('profileAbout').textContent = `"${currentUserProfile.about || ""}"`; document.getElementById('profileImage').src = currentUserProfile.profilePic || DEFAULT_AVATAR;
             
+            document.getElementById('fpBtn').innerHTML = fpEnabled ? "🔓 Disable Fingerprint Lock" : "🔒 Enable Fingerprint Lock";
+
             await fetchTimetableData(); renderMySchedule(); checkForRTS(); initSocialEngine(); 
-            loader.classList.add('hidden'); document.getElementById('appView').classList.remove('hidden');
-        } else { loader.classList.add('hidden'); document.getElementById('completeProfileView').classList.remove('hidden'); }
-    } else { loader.classList.add('hidden'); document.getElementById('appView').classList.add('hidden'); document.getElementById('completeProfileView').classList.add('hidden'); document.getElementById('otpView').classList.add('hidden'); authView.classList.remove('hidden'); currentUserProfile = null; }
+            loader.classList.add('hidden'); 
+            lockScreenView.classList.add('hidden');
+            appView.classList.remove('hidden');
+        } else { 
+            loader.classList.add('hidden'); 
+            document.getElementById('completeProfileView').classList.remove('hidden'); 
+        }
+    } else { 
+        loader.classList.add('hidden'); 
+        appView.classList.add('hidden'); 
+        document.getElementById('completeProfileView').classList.add('hidden'); 
+        document.getElementById('otpView').classList.add('hidden'); 
+        lockScreenView.classList.add('hidden');
+        authView.classList.remove('hidden'); 
+        currentUserProfile = null; 
+    }
 });
 
 async function fetchTimetableData() {
-    try { const res = await fetch(`${DATA_URL}?t=${new Date().getTime()}`); timetableData = await res.json(); window.timetableData = timetableData; } 
-    catch (e) { document.getElementById('myScheduleResults').innerHTML = '<div class="error-msg">Failed to load timetable.</div>'; }
+    try { const res = await fetch(`${DATA_URL}?t=${new Date().getTime()}`, { cache: "no-store" }); timetableData = await res.json(); window.timetableData = timetableData; } 
+    catch (e) { document.getElementById('myScheduleResults').innerHTML = '<div class="error-msg">Failed to load timetable. Check your connection.</div>'; }
 }
 
 async function checkForRTS() {
@@ -265,7 +359,7 @@ async function checkForRTS() {
 }
 
 // ==========================================
-// 6. ALL BATCHES SEARCH
+// 7. ALL BATCHES SEARCH
 // ==========================================
 function renderMySchedule() {
     if (!currentUserProfile) return;
@@ -306,7 +400,7 @@ function createCardHTML(item, index) {
 }
 
 // ==========================================
-// 7. BULLETPROOF TIMELINE & AI EXPERT
+// 8. TIMELINE & AI EXPERT
 // ==========================================
 let aiDebounceTimer = null;
 
@@ -365,7 +459,6 @@ document.getElementById('teacherInput').addEventListener('input', (e) => {
 
     if (!rawSlots.length) return container.innerHTML = `<div class="teacher-free-card" style="background:#fef2f2; border-color:#f87171; color:#991b1b;">❌ No classes found recently for <b>${q}</b>.</div>`;
 
-    // Merge identical Daily/Weekly slots
     let busySlots = [];
     const groupedByTime = {};
     
@@ -430,7 +523,6 @@ document.getElementById('teacherInput').addEventListener('input', (e) => {
     
     container.innerHTML = html;
 
-    // --- TRIGGER DUAL-ENGINE AI SUMMARY ---
     aiBox.classList.remove('hidden');
     aiText.innerHTML = `<span style="animation: pulse 1.5s infinite opacity;">AI analyzing schedule details...</span>`;
 
@@ -450,14 +542,13 @@ INSTRUCTIONS:
             const aiResponse = await generateAIResponse(prompt, false);
             aiText.textContent = aiResponse.replace(/\*/g, '');
         } catch(e) { 
-            console.error(e);
             aiText.innerHTML = `<span style="color: #b91c1c;"><b>AI Error:</b> ${e.message}</span>`; 
         }
     }, 1500); 
 });
 
 // ==========================================
-// 8. GLOBAL AI CHAT ENGINE
+// 9. GLOBAL AI CHAT ENGINE
 // ==========================================
 window.openAIChat = (isGlobal = false) => {
     document.getElementById('aiChatWindow').classList.remove('hidden');
@@ -505,7 +596,7 @@ document.getElementById('aiChatInputForm').addEventListener('submit', async (e) 
 });
 
 // ==========================================
-// 9. SOCIAL NETWORK ENGINE & CHAT CONTROLS
+// 10. SOCIAL NETWORK ENGINE & CHAT CONTROLS
 // ==========================================
 function initSocialEngine() {
     if(!auth.currentUser) return; const myUid = auth.currentUser.uid;

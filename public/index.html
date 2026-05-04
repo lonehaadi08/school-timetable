@@ -23,6 +23,21 @@
             <p style="color: var(--text-light); font-size: 0.95rem;">Getting your personalized schedule ready.</p>
         </div>
 
+        <!-- NEW FINGERPRINT LOCK SCREEN -->
+        <div id="lockScreenView" class="auth-wrapper hidden" style="text-align: center; height: 100%; display: flex; flex-direction: column; justify-content: center;">
+            <div class="brand auth-brand">
+                <span class="icon">🔒</span>
+                <h1 style="color: var(--hunter-green);">App Locked</h1>
+            </div>
+            <p class="sub-text" style="margin: 20px 0;">Unlock to view your schedule.</p>
+            <button onclick="promptFingerprint()" class="btn-primary" style="width: 100%; padding: 15px; border-radius: 50px;">
+                👆 Touch to Unlock
+            </button>
+            <button onclick="logoutFromLock()" class="btn-small" style="background: transparent; color: var(--blushed-brick); border: 1px solid var(--blushed-brick); margin-top: 15px; padding: 10px; width: 100%;">
+                Logout Instead
+            </button>
+        </div>
+
         <div id="authView" class="auth-wrapper hidden">
             <div class="brand auth-brand">
                 <span class="icon">✨</span>
@@ -219,6 +234,11 @@
                             <div class="detail-item"><span>Batch</span><strong id="profileBatch">...</strong></div>
                             <div class="detail-item"><span>Aim</span><strong id="profileAim">...</strong></div>
                         </div>
+
+                        <!-- NEW SETUP FINGERPRINT BUTTON -->
+                        <button id="fpBtn" onclick="setupFingerprint()" class="btn-small" style="background: rgba(106, 153, 78, 0.1); color: var(--sage-green); border: 1px solid rgba(106, 153, 78, 0.3); margin-top:5px; margin-bottom: 5px; width:100%; padding:10px;">
+                            🔒 Enable Fingerprint Lock
+                        </button>
 
                         <button onclick="removeProfilePic()" class="btn-small" style="background: rgba(188, 71, 73, 0.1); color: var(--blushed-brick); border: 1px solid rgba(188, 71, 73, 0.3); margin-top:5px; margin-bottom: 25px; width:100%; padding:10px;">
                             🗑️ Remove Profile Picture

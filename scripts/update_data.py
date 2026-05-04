@@ -13,26 +13,28 @@ BASE_DIR = os.path.dirname(os.path.abspath(__file__))
 OUTPUT_FILE = os.path.join(BASE_DIR, "..", "public", "data.json")
 
 def parse_date(date_str):
-    if not date_str or not isinstance(date_str, str): return None
-    # Remove day names to parse strictly the date part
+    # Handle empty/blank spaces from Google Sheets directly
+    if not date_str or not isinstance(date_str, str) or date_str.strip() == "":
+        return None
+        
     clean_str = re.sub(r'(Mon|Tue|Wed|Thu|Fri|Sat|Sun)', '', date_str, flags=re.IGNORECASE).strip()
     clean_str = clean_str.rstrip(',').strip()
+    
+    # Catch specific school holiday keywords
+    if "holiday" in clean_str.lower() or "off" in clean_str.lower() or "eid" in clean_str.lower():
+        return datetime.date.today() 
     
     try:
         now = datetime.datetime.now()
         current_year = now.year
-        
-        # Parse "31 Jan" -> Date object with current year first
         dt = datetime.datetime.strptime(f"{clean_str} {current_year}", "%d %b %Y").date()
         
-        # SMART YEAR FIX:
-        # If we are in Jan 2026, and the sheet says "Dec", it likely means Dec 2025 (History).
-        # Logic: If the date is more than 6 months in the future, assume it belongs to last year.
         if (dt - now.date()).days > 180:
             dt = dt.replace(year=current_year - 1)
         
         return dt
     except ValueError:
+        # Failsafe for unparseable dates
         return None
 
 def fetch_data(url, sheet_name, date_row_idx):
@@ -50,16 +52,13 @@ def fetch_data(url, sheet_name, date_row_idx):
         date_row = all_rows[date_row_idx]
         time_row = all_rows[date_row_idx + 1]
         
-        # --- LOGIC: FETCH HISTORY + FUTURE (200 Columns) ---
-        relevant_indices = {0} # Always keep Batch column
+        relevant_indices = {0}
         found_dates = []
         
-        DESIRED_DAYS_COUNT = 200  # Requested limit
-        HISTORY_DAYS = 35         # How far back to look (1 month + buffer)
+        DESIRED_DAYS_COUNT = 200
+        HISTORY_DAYS = 35
         
         current_active_date = None
-        
-        # Start looking from 35 days ago
         start_date = datetime.date.today() - datetime.timedelta(days=HISTORY_DAYS)
 
         for i, cell in enumerate(date_row):
@@ -67,24 +66,21 @@ def fetch_data(url, sheet_name, date_row_idx):
             
             parsed = parse_date(cell)
             if parsed:
-                # If date is newer than our history limit (e.g. newer than Dec 25)
                 if parsed >= start_date:
                     if len(found_dates) < DESIRED_DAYS_COUNT:
                         current_active_date = parsed
                         relevant_indices.add(i)
                         found_dates.append(parsed)
                     else:
-                        current_active_date = None # Stop collecting after limit
+                        current_active_date = None 
                 else:
-                    current_active_date = None # Date is too old (older than 1 month)
+                    current_active_date = None 
             
-            # If we are "under" a valid date (handling merged cells)
             elif current_active_date and i < len(time_row) and time_row[i].strip():
                 relevant_indices.add(i)
 
         sorted_indices = sorted(list(relevant_indices))
         
-        # Build Headers
         final_headers = []
         last_date_str = ""
         for i in sorted_indices:
@@ -92,6 +88,7 @@ def fetch_data(url, sheet_name, date_row_idx):
                 final_headers.append("Batch")
                 continue
             
+            # If the date row has actual text, save it. Otherwise, use the last known date.
             if date_row[i].strip():
                 last_date_str = date_row[i].strip()
             
@@ -103,7 +100,6 @@ def fetch_data(url, sheet_name, date_row_idx):
 
         print(f"   ℹ️ Keeping {len(found_dates)} distinct days (History + Future).")
 
-        # Extract Data
         data = []
         start_row = date_row_idx + 2
         for row in all_rows[start_row:]:
@@ -117,8 +113,9 @@ def fetch_data(url, sheet_name, date_row_idx):
                     entry[header_name] = row[idx].strip()
                     has_data = True
             
-            if has_data:
-                data.append(entry)
+            # Even if has_data is false (e.g., all classes are blank for a holiday),
+            # we will still append the batch so the UI knows it exists, just with an empty schedule
+            data.append(entry)
 
         return data
 
