@@ -13,29 +13,14 @@ BASE_DIR = os.path.dirname(os.path.abspath(__file__))
 OUTPUT_FILE = os.path.join(BASE_DIR, "..", "public", "data.json")
 
 def parse_date(date_str):
-    # Handle empty/blank spaces from Google Sheets directly
-    if not date_str or not isinstance(date_str, str) or date_str.strip() == "":
-        return None
-        
-    clean_str = re.sub(r'(Mon|Tue|Wed|Thu|Fri|Sat|Sun)', '', date_str, flags=re.IGNORECASE).strip()
-    clean_str = clean_str.rstrip(',').strip()
-    
-    # Catch specific school holiday keywords
-    if "holiday" in clean_str.lower() or "off" in clean_str.lower() or "eid" in clean_str.lower():
-        return datetime.date.today() 
-    
+    if not date_str or not isinstance(date_str, str) or date_str.strip() == "": return None
+    clean_str = re.sub(r'(Mon|Tue|Wed|Thu|Fri|Sat|Sun)', '', date_str, flags=re.IGNORECASE).strip().rstrip(',').strip()
     try:
         now = datetime.datetime.now()
-        current_year = now.year
-        dt = datetime.datetime.strptime(f"{clean_str} {current_year}", "%d %b %Y").date()
-        
-        if (dt - now.date()).days > 180:
-            dt = dt.replace(year=current_year - 1)
-        
+        dt = datetime.datetime.strptime(f"{clean_str} {now.year}", "%d %b %Y").date()
+        if (dt - now.date()).days > 180: dt = dt.replace(year=now.year - 1)
         return dt
-    except ValueError:
-        # Failsafe for unparseable dates
-        return None
+    except ValueError: return None
 
 def fetch_data(url, sheet_name, date_row_idx):
     print(f"\n--- Fetching {sheet_name} ---")
@@ -43,82 +28,56 @@ def fetch_data(url, sheet_name, date_row_idx):
         response = requests.get(url)
         response.raise_for_status()
         lines = response.content.decode('utf-8').splitlines()
-        reader = csv.reader(lines)
-        all_rows = list(reader)
+        all_rows = list(csv.reader(lines))
 
-        if len(all_rows) < date_row_idx + 2:
-            return []
+        if len(all_rows) < date_row_idx + 2: return []
 
         date_row = all_rows[date_row_idx]
         time_row = all_rows[date_row_idx + 1]
         
-        relevant_indices = {0}
-        found_dates = []
+        relevant_indices = [0] # Always keep Batch column
+        keep_mode = True # We assume the newest dates are on the left
         
-        DESIRED_DAYS_COUNT = 200
-        HISTORY_DAYS = 35
-        
-        current_active_date = None
-        start_date = datetime.date.today() - datetime.timedelta(days=HISTORY_DAYS)
-
-        for i, cell in enumerate(date_row):
-            if i == 0: continue 
+        # Scan columns left to right
+        for i in range(1, len(date_row)):
+            if i >= len(time_row): break
+            cell = date_row[i].strip()
             
-            parsed = parse_date(cell)
-            if parsed:
-                if parsed >= start_date:
-                    if len(found_dates) < DESIRED_DAYS_COUNT:
-                        current_active_date = parsed
-                        relevant_indices.add(i)
-                        found_dates.append(parsed)
-                    else:
-                        current_active_date = None 
+            if cell:
+                parsed = parse_date(cell)
+                if parsed and (datetime.date.today() - parsed).days > 35:
+                    keep_mode = False # Stop keeping data if it's older than 35 days
                 else:
-                    current_active_date = None 
+                    keep_mode = True # Keep future dates, today, and recent past
             
-            elif current_active_date and i < len(time_row) and time_row[i].strip():
-                relevant_indices.add(i)
+            if keep_mode:
+                # Keep column if there's a time header OR a date header (handles blanks/holidays gracefully)
+                if time_row[i].strip() or cell:
+                    relevant_indices.append(i)
 
-        sorted_indices = sorted(list(relevant_indices))
-        
-        final_headers = []
-        last_date_str = ""
-        for i in sorted_indices:
-            if i == 0:
-                final_headers.append("Batch")
-                continue
+        final_headers = ["Batch"]
+        current_date = ""
+        for i in relevant_indices[1:]:
+            if date_row[i].strip(): current_date = date_row[i].strip()
+            time_label = time_row[i].strip() if time_row[i].strip() else "Info"
             
-            # If the date row has actual text, save it. Otherwise, use the last known date.
-            if date_row[i].strip():
-                last_date_str = date_row[i].strip()
-            
-            time_label = time_row[i].strip()
             if "Room" in time_label or "Doubt" in time_label:
-                final_headers.append(f"{time_label} ({last_date_str})")
+                final_headers.append(f"{time_label} ({current_date})")
             else:
-                final_headers.append(f"{last_date_str} - {time_label}")
-
-        print(f"   ℹ️ Keeping {len(found_dates)} distinct days (History + Future).")
+                final_headers.append(f"{current_date} - {time_label}")
 
         data = []
-        start_row = date_row_idx + 2
-        for row in all_rows[start_row:]:
+        for row in all_rows[date_row_idx + 2:]:
             if not row or not row[0].strip(): continue
-            entry = {}
+            entry = {"Batch": row[0].strip()}
             has_data = False
-            entry["Batch"] = row[0].strip()
-            
-            for idx, header_name in zip(sorted_indices[1:], final_headers[1:]):
+            for idx, header_name in zip(relevant_indices[1:], final_headers[1:]):
                 if idx < len(row) and row[idx].strip():
                     entry[header_name] = row[idx].strip()
                     has_data = True
-            
-            # Even if has_data is false (e.g., all classes are blank for a holiday),
-            # we will still append the batch so the UI knows it exists, just with an empty schedule
-            data.append(entry)
+            if has_data: data.append(entry)
 
         return data
-
     except Exception as e:
         print(f"❌ Error: {e}")
         return []
@@ -126,15 +85,8 @@ def fetch_data(url, sheet_name, date_row_idx):
 def main():
     daily = fetch_data(DAILY_SHEET_URL, "Daily", 0)
     weekly = fetch_data(WEEKLY_SHEET_URL, "Weekly", 1)
-
-    full_db = {
-        "metadata": {"last_updated": str(datetime.datetime.now())},
-        "daily": daily,
-        "weekly": weekly
-    }
-
     with open(OUTPUT_FILE, "w", encoding='utf-8') as f:
-        json.dump(full_db, f, indent=2)
+        json.dump({"metadata": {"last_updated": str(datetime.datetime.now())}, "daily": daily, "weekly": weekly}, f, indent=2)
     print(f"\n💾 Saved to {OUTPUT_FILE}")
 
 if __name__ == "__main__":

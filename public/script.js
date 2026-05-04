@@ -1,6 +1,3 @@
-// ==========================================
-// 1. FIREBASE, EMAILJS, CAPACITOR & API SETUP
-// ==========================================
 import { initializeApp } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-app.js";
 import { getAuth, createUserWithEmailAndPassword, signInWithEmailAndPassword, onAuthStateChanged, signOut, sendPasswordResetEmail, setPersistence, browserLocalPersistence } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-auth.js";
 import { getFirestore, doc, setDoc, getDoc, collection, query, where, getDocs, addDoc, onSnapshot, orderBy, serverTimestamp, updateDoc, deleteDoc } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore.js";
@@ -24,7 +21,6 @@ const db = getFirestore(app);
 setPersistence(auth, browserLocalPersistence);
 
 const DEFAULT_AVATAR = "data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='%23526b58'%3E%3Cpath d='M12 12c2.21 0 4-1.79 4-4s-1.79-4-4-4-4 1.79-4 4 1.79 4 4 4zm0 2c-2.67 0-8 1.34-8 4v2h16v-2c0-2.66-5.33-4-8-4z'/%3E%3C/svg%3E";
-
 emailjs.init("eV9GmBZdy2ByqSZmw");
 const IMGBB_API_KEY = "d7a0fd403ed8a561aab9d2b6d2961e9d";
 const DATA_URL = 'https://raw.githubusercontent.com/lonehaadi08/school-timetable/main/public/data.json';
@@ -37,7 +33,7 @@ let generatedOTP = null; let pendingRegistrationData = null; let pendingProfileP
 let activeChatUnsubscribe = null; let requestsUnsubscribe = null; let friendsUnsubscribe = null; let currentChatFriendId = null;
 
 // ==========================================
-// 2. UI UTILITIES & PROFILE LIVE EDITS
+// UI UTILITIES
 // ==========================================
 window.toggleAuth = (view) => {
     document.getElementById('loginForm').classList.toggle('hidden', view !== 'login');
@@ -53,8 +49,7 @@ window.cancelRegistration = () => {
 }
 
 document.getElementById('regProfilePic').addEventListener('change', function() {
-    const fileName = this.files[0] ? this.files[0].name : "No file chosen";
-    document.getElementById('fileNameDisplay').textContent = fileName;
+    document.getElementById('fileNameDisplay').textContent = this.files[0] ? this.files[0].name : "No file chosen";
 });
 
 window.switchTab = (tabId, title) => {
@@ -76,28 +71,35 @@ function hideErrors() { document.querySelectorAll('.error-msg').forEach(el => el
 function showError(id, msg) { const el = document.getElementById(id); el.textContent = msg; el.classList.remove('hidden'); }
 
 window.forceRefreshApp = async () => {
+    const btn = document.getElementById('btnRefreshApp');
+    const originalText = btn.innerHTML;
+    btn.innerHTML = `<span style="animation: pulse 1s infinite;">⏳</span> Syncing...`;
+    
     try {
         const res = await fetch(`${DATA_URL}?bust=${new Date().getTime()}`, { cache: "no-store" }); 
-        timetableData = await res.json(); window.timetableData = timetableData;
+        timetableData = await res.json(); 
+        window.timetableData = timetableData;
         populateBatchDropdown();
+        
         // Reset dropdown to permanent batch on refresh
         if (currentUserProfile) document.getElementById('myScheduleBatchSelect').value = currentUserProfile.batch;
         renderMySchedule();
+        
         const tInput = document.getElementById('teacherInput'); 
         if(tInput && tInput.value) tInput.dispatchEvent(new Event('input'));
-        alert("Timetable successfully synced from live server!");
-    } catch(e) { alert("Failed to sync. Please check your internet connection."); }
+    } catch(e) { 
+        alert("Failed to sync. Please check your internet connection."); 
+    } finally {
+        btn.innerHTML = originalText;
+    }
 };
 
 window.downloadPDF = (elementId, filename) => {
     const element = document.getElementById(elementId);
     if(element.innerText.includes("Start typing") || element.innerText.includes("Loading") || element.innerText.includes("❌")) return alert("Search for valid data first before exporting to PDF!");
     
-    // Check if dropdown is used to name the file properly
     let activeBatch = "";
-    if(elementId === 'myScheduleResults') {
-        activeBatch = document.getElementById('myScheduleBatchSelect').value;
-    }
+    if(elementId === 'myScheduleResults') activeBatch = document.getElementById('myScheduleBatchSelect').value;
     const safeFilename = activeBatch ? `${filename}_${activeBatch}` : filename;
 
     const dateStr = new Date().toLocaleDateString().replace(/\//g, '-');
@@ -106,7 +108,7 @@ window.downloadPDF = (elementId, filename) => {
 };
 
 // ==========================================
-// 3. BIOMETRIC (FINGERPRINT) ENGINE
+// BIOMETRIC (FINGERPRINT) ENGINE
 // ==========================================
 window.setupFingerprint = async () => {
     if (localStorage.getItem('fingerprintEnabled') === 'true') {
@@ -147,28 +149,22 @@ window.promptFingerprint = async () => {
     try {
         const credIdStr = localStorage.getItem('fpCredId');
         if (!credIdStr) return;
-        
         const credentialId = new Uint8Array(JSON.parse(credIdStr));
         const assertion = await navigator.credentials.get({
-            publicKey: {
-                challenge: new Uint8Array(32),
-                allowCredentials: [{ id: credentialId, type: "public-key" }],
-                userVerification: "required"
-            }
+            publicKey: { challenge: new Uint8Array(32), allowCredentials: [{ id: credentialId, type: "public-key" }], userVerification: "required" }
         });
         if (assertion) {
-            sessionStorage.setItem('appUnlocked', 'true'); // Survives refresh, dies on force-close
+            sessionStorage.setItem('appUnlocked', 'true');
             window.location.reload(); 
         }
     } catch (e) {}
 };
 
-window.logoutFromLock = () => {
-    sessionStorage.removeItem('appUnlocked');
-    signOut(auth);
-    window.location.reload();
-};
+window.logoutFromLock = () => { sessionStorage.removeItem('appUnlocked'); signOut(auth); window.location.reload(); };
 
+// ==========================================
+// PROFILE EDITS & REMINDERS
+// ==========================================
 window.setCustomReminder = async () => {
     const text = document.getElementById('remText').value.trim(); const time = document.getElementById('remTime').value;
     if(!text || !time) return alert("Please enter both a message and a time.");
@@ -186,8 +182,7 @@ window.setCustomReminder = async () => {
 
 document.getElementById('liveProfilePicInput').addEventListener('change', async function() {
     if(!this.files[0] || !auth.currentUser) return;
-    const file = this.files[0];
-    document.getElementById('profileImage').src = URL.createObjectURL(file); 
+    const file = this.files[0]; document.getElementById('profileImage').src = URL.createObjectURL(file); 
     try {
         const formData = new FormData(); formData.append("image", file);
         const imgRes = await fetch(`https://api.imgbb.com/1/upload?key=${IMGBB_API_KEY}`, { method: "POST", body: formData });
@@ -203,23 +198,17 @@ window.editBio = async () => {
     if(!auth.currentUser) return;
     const newBio = prompt("Enter your new bio:", currentUserProfile.about || "");
     if(newBio !== null) {
-        try {
-            await updateDoc(doc(db, "users", auth.currentUser.uid), { about: newBio });
-            currentUserProfile.about = newBio; document.getElementById('profileAbout').textContent = `"${newBio}"`;
-        } catch(e) { alert("Failed to update bio."); }
+        try { await updateDoc(doc(db, "users", auth.currentUser.uid), { about: newBio }); currentUserProfile.about = newBio; document.getElementById('profileAbout').textContent = `"${newBio}"`; } catch(e) {}
     }
 };
 
 window.removeProfilePic = async () => {
     if(!auth.currentUser || !confirm("Are you sure you want to remove your profile picture?")) return;
-    try {
-        await updateDoc(doc(db, "users", auth.currentUser.uid), { profilePic: DEFAULT_AVATAR });
-        currentUserProfile.profilePic = DEFAULT_AVATAR; document.getElementById('profileImage').src = DEFAULT_AVATAR;
-    } catch(e) { }
+    try { await updateDoc(doc(db, "users", auth.currentUser.uid), { profilePic: DEFAULT_AVATAR }); currentUserProfile.profilePic = DEFAULT_AVATAR; document.getElementById('profileImage').src = DEFAULT_AVATAR; } catch(e) { }
 };
 
 // ==========================================
-// 4. OTP REGISTRATION & AUTH
+// OTP REGISTRATION & AUTH
 // ==========================================
 document.getElementById('registerForm').addEventListener('submit', async (e) => {
     e.preventDefault(); hideErrors(); const btn = document.getElementById('btnTriggerOTP'); btn.textContent = "Sending OTP..."; btn.disabled = true;
@@ -245,28 +234,13 @@ document.getElementById('otpForm').addEventListener('submit', async (e) => {
 document.getElementById('loginForm').addEventListener('submit', async (e) => { e.preventDefault(); try { await signInWithEmailAndPassword(auth, document.getElementById('loginEmail').value, document.getElementById('loginPassword').value); } catch (error) { showError('loginError', "Invalid email or password."); } });
 
 document.getElementById('btnFingerprintLogin').addEventListener('click', async () => { 
-    hideErrors();
-    const credIdStr = localStorage.getItem('fpCredId');
-    if (!credIdStr) {
-        showError('loginError', "Fingerprint not set up or browser cache was cleared. Please login with Email and Password.");
-        return;
-    }
+    hideErrors(); const credIdStr = localStorage.getItem('fpCredId');
+    if (!credIdStr) return showError('loginError', "Fingerprint not set up or browser cache was cleared. Please login with Email and Password.");
     try {
         const credentialId = new Uint8Array(JSON.parse(credIdStr));
-        const assertion = await navigator.credentials.get({
-            publicKey: {
-                challenge: new Uint8Array(32),
-                allowCredentials: [{ id: credentialId, type: "public-key" }],
-                userVerification: "required"
-            }
-        });
-        if (assertion) {
-            sessionStorage.setItem('appUnlocked', 'true');
-            window.location.reload(); 
-        }
-    } catch (error) { 
-        showError('loginError', "Fingerprint verification failed or was cancelled."); 
-    } 
+        const assertion = await navigator.credentials.get({ publicKey: { challenge: new Uint8Array(32), allowCredentials: [{ id: credentialId, type: "public-key" }], userVerification: "required" } });
+        if (assertion) { sessionStorage.setItem('appUnlocked', 'true'); window.location.reload(); }
+    } catch (error) { showError('loginError', "Fingerprint verification failed or was cancelled."); } 
 });
 
 document.getElementById('resetForm').addEventListener('submit', async (e) => { e.preventDefault(); hideErrors(); try { await sendPasswordResetEmail(auth, document.getElementById('resetEmail').value); document.getElementById('resetSuccess').textContent = "Reset link sent!"; document.getElementById('resetSuccess').classList.remove('hidden'); } catch (error) { showError('resetError', "Failed to send reset email."); } });
@@ -278,56 +252,32 @@ document.getElementById('completeProfileForm').addEventListener('submit', async 
 });
 
 // ==========================================
-// 5. APP INIT & BIOMETRIC GATEWAY
+// APP INIT
 // ==========================================
 onAuthStateChanged(auth, async (user) => {
-    const loader = document.getElementById('initialLoader'); 
-    const authView = document.getElementById('authView');
-    const appView = document.getElementById('appView');
-    const lockScreenView = document.getElementById('lockScreenView');
+    const loader = document.getElementById('initialLoader'); const authView = document.getElementById('authView'); const appView = document.getElementById('appView'); const lockScreenView = document.getElementById('lockScreenView');
 
     if (user) {
-        document.getElementById('otpView').classList.add('hidden'); 
-        authView.classList.add('hidden');
-
-        const fpEnabled = localStorage.getItem('fingerprintEnabled') === 'true';
-        const isUnlocked = sessionStorage.getItem('appUnlocked') === 'true';
+        document.getElementById('otpView').classList.add('hidden'); authView.classList.add('hidden');
+        const fpEnabled = localStorage.getItem('fingerprintEnabled') === 'true'; const isUnlocked = sessionStorage.getItem('appUnlocked') === 'true';
         
         if (fpEnabled && !isUnlocked) {
-            loader.classList.add('hidden');
-            appView.classList.add('hidden');
-            lockScreenView.classList.remove('hidden');
-            window.promptFingerprint(); 
-            return;
+            loader.classList.add('hidden'); appView.classList.add('hidden'); lockScreenView.classList.remove('hidden');
+            window.promptFingerprint(); return;
         }
 
         const docSnap = await getDoc(doc(db, "users", user.uid));
         if (docSnap.exists()) {
             currentUserProfile = docSnap.data();
             document.getElementById('profileName').textContent = currentUserProfile.name; document.getElementById('profileEmail').textContent = currentUserProfile.email; document.getElementById('profileBatch').textContent = currentUserProfile.batch; document.getElementById('profileAim').textContent = currentUserProfile.aim || "N/A"; document.getElementById('profileAbout').textContent = `"${currentUserProfile.about || ""}"`; document.getElementById('profileImage').src = currentUserProfile.profilePic || DEFAULT_AVATAR;
-            
             document.getElementById('fpBtn').innerHTML = fpEnabled ? "🔓 Disable Fingerprint Lock" : "🔒 Enable Fingerprint Lock";
 
-            await fetchTimetableData(); 
-            renderMySchedule(); 
-            checkForRTS(); 
-            initSocialEngine(); 
+            await fetchTimetableData(); renderMySchedule(); checkForRTS(); initSocialEngine(); 
             
-            loader.classList.add('hidden'); 
-            lockScreenView.classList.add('hidden');
-            appView.classList.remove('hidden');
-        } else { 
-            loader.classList.add('hidden'); 
-            document.getElementById('completeProfileView').classList.remove('hidden'); 
-        }
+            loader.classList.add('hidden'); lockScreenView.classList.add('hidden'); appView.classList.remove('hidden');
+        } else { loader.classList.add('hidden'); document.getElementById('completeProfileView').classList.remove('hidden'); }
     } else { 
-        loader.classList.add('hidden'); 
-        appView.classList.add('hidden'); 
-        document.getElementById('completeProfileView').classList.add('hidden'); 
-        document.getElementById('otpView').classList.add('hidden'); 
-        lockScreenView.classList.add('hidden');
-        authView.classList.remove('hidden'); 
-        currentUserProfile = null; 
+        loader.classList.add('hidden'); appView.classList.add('hidden'); document.getElementById('completeProfileView').classList.add('hidden'); document.getElementById('otpView').classList.add('hidden'); lockScreenView.classList.add('hidden'); authView.classList.remove('hidden'); currentUserProfile = null; 
     }
 });
 
@@ -336,7 +286,7 @@ async function fetchTimetableData() {
         const res = await fetch(`${DATA_URL}?t=${new Date().getTime()}`, { cache: "no-store" }); 
         timetableData = await res.json(); 
         window.timetableData = timetableData; 
-        populateBatchDropdown(); // Fill dropdown options
+        populateBatchDropdown(); 
     } 
     catch (e) { document.getElementById('myScheduleResults').innerHTML = '<div class="error-msg">Failed to load timetable. Check your connection.</div>'; }
 }
@@ -370,45 +320,31 @@ async function checkForRTS() {
 }
 
 // ==========================================
-// 6. ALL BATCHES & DROPDOWN SCHEDULING
+// ALL BATCHES & DROPDOWN SCHEDULING
 // ==========================================
 function populateBatchDropdown() {
     const select = document.getElementById('myScheduleBatchSelect');
     if (!timetableData.weekly || timetableData.weekly.length === 0) return;
     
-    // Get unique batch names and sort them alphabetically
     const batches = [...new Set(timetableData.weekly.map(b => b.Batch).filter(Boolean))].sort();
-    
-    let html = '';
-    batches.forEach(b => { html += `<option value="${b}">${b}</option>`; });
+    let html = ''; batches.forEach(b => { html += `<option value="${b}">${b}</option>`; });
     select.innerHTML = html;
     
-    // Default to user's profile batch
-    if (currentUserProfile && currentUserProfile.batch) {
-        select.value = currentUserProfile.batch;
-    }
+    if (currentUserProfile && currentUserProfile.batch) select.value = currentUserProfile.batch;
 }
 
-// Listen for dropdown changes
-document.getElementById('myScheduleBatchSelect').addEventListener('change', () => {
-    renderMySchedule();
-});
+document.getElementById('myScheduleBatchSelect').addEventListener('change', () => { renderMySchedule(); });
 
 function renderMySchedule() {
     const select = document.getElementById('myScheduleBatchSelect');
     let activeBatch = select.value || (currentUserProfile ? currentUserProfile.batch : null);
-    
     if (!activeBatch) return;
 
     const dataSet = myScheduleTimeView === 'daily' ? timetableData.daily : timetableData.weekly;
     const mySchedule = dataSet.find(b => String(b.Batch).toUpperCase() === String(activeBatch).toUpperCase());
     const container = document.getElementById('myScheduleResults');
     
-    if (!mySchedule) { 
-        container.innerHTML = `<div class="welcome-msg">No classes scheduled for <b>${activeBatch}</b>.</div>`; 
-    } else { 
-        container.innerHTML = createCardHTML(mySchedule, 0); 
-    }
+    if (!mySchedule) { container.innerHTML = `<div class="welcome-msg">No classes scheduled for <b>${activeBatch}</b>.</div>`; } else { container.innerHTML = createCardHTML(mySchedule, 0); }
 }
 
 document.getElementById('batchInput').addEventListener('input', (e) => {
@@ -419,7 +355,6 @@ document.getElementById('batchInput').addEventListener('input', (e) => {
         if(String(item.Batch).toLowerCase().includes(q)) return true;
         return Object.keys(item).some(k => k.toLowerCase().includes(q));
     });
-    
     container.innerHTML = matches.length ? matches.map((m, i) => createCardHTML(m, i)).join('') : `<div class="welcome-msg">No results found.</div>`;
 });
 
@@ -442,53 +377,29 @@ function createCardHTML(item, index) {
 }
 
 // ==========================================
-// 7. TEACHER TIMELINE
+// TEACHER TIMELINE
 // ==========================================
 document.getElementById('teacherInput').addEventListener('input', (e) => {
-    const rawInput = e.target.value.trim().toUpperCase(); 
-    const q = rawInput.replace(/[^A-Z0-9\s]/g, ''); 
-    const container = document.getElementById('teacherResults'); 
-    
+    const rawInput = e.target.value.trim().toUpperCase(); const q = rawInput.replace(/[^A-Z0-9\s]/g, ''); const container = document.getElementById('teacherResults'); 
     if (q.length < 2) return container.innerHTML = '<div class="welcome-msg">Search teacher code or date (e.g., FN, 21 Apr)...</div>';
 
-    let rawSlots = []; 
-    const now = new Date(); const currentYear = now.getFullYear(); 
-
-    const maxPast = new Date(); maxPast.setDate(now.getDate() - 14);
-    const maxFuture = new Date(); maxFuture.setDate(now.getDate() + 7);
-
+    let rawSlots = []; const now = new Date(); const currentYear = now.getFullYear(); 
+    const maxPast = new Date(); maxPast.setDate(now.getDate() - 14); const maxFuture = new Date(); maxFuture.setDate(now.getDate() + 7);
     const searchRegex = new RegExp(`(^|[^a-zA-Z0-9])${q.replace(/\s+/g, '\\s*')}([^a-zA-Z0-9]|$)`, 'i');
-    
-    const allData = [
-        ...(timetableData.weekly || []).map(b => ({...b, _source: 'weekly'})), 
-        ...(timetableData.daily || []).map(b => ({...b, _source: 'daily'}))
-    ];
+    const allData = [...(timetableData.weekly || []).map(b => ({...b, _source: 'weekly'})), ...(timetableData.daily || []).map(b => ({...b, _source: 'daily'}))];
 
     allData.forEach(batch => {
         Object.keys(batch).forEach(key => {
             if (key === "Batch" || key === "_source" || key.toLowerCase().includes("room")) return;
             const cellValue = String(batch[key]).toUpperCase();
-            
             if (searchRegex.test(cellValue) || searchRegex.test(key.toUpperCase())) {
-                let dateStr = "Unknown", timeStr = key, isToday = false; 
-                let slotDate = null;
-
+                let dateStr = "Unknown", timeStr = key, isToday = false; let slotDate = null;
                 if (key.includes('-') && key.match(/\d{1,2}\s[A-Za-z]{3}/)) {
-                    const parts = key.split('-'); dateStr = parts[0].trim(); timeStr = parts.slice(1).join('-').trim();
-                    const cleanDateStr = dateStr.split(',')[0].trim(); 
-                    
+                    const parts = key.split('-'); dateStr = parts[0].trim(); timeStr = parts.slice(1).join('-').trim(); const cleanDateStr = dateStr.split(',')[0].trim(); 
                     let tempDate = new Date(`${cleanDateStr} ${currentYear}`);
-                    if (!isNaN(tempDate)) {
-                        if (tempDate.getMonth() > now.getMonth() + 2) tempDate.setFullYear(currentYear - 1);
-                        slotDate = tempDate;
-                    }
+                    if (!isNaN(tempDate)) { if (tempDate.getMonth() > now.getMonth() + 2) tempDate.setFullYear(currentYear - 1); slotDate = tempDate; }
                 }
-
-                if (slotDate) {
-                    if (slotDate < maxPast || slotDate > maxFuture) return;
-                    if (slotDate.toDateString() === now.toDateString()) isToday = true;
-                }
-
+                if (slotDate) { if (slotDate < maxPast || slotDate > maxFuture) return; if (slotDate.toDateString() === now.toDateString()) isToday = true; }
                 rawSlots.push({ batch: batch.Batch, date: dateStr, time: timeStr, subject: cellValue, source: batch._source, isToday: isToday, timestamp: slotDate ? slotDate.getTime() : 0 });
             }
         });
@@ -496,55 +407,26 @@ document.getElementById('teacherInput').addEventListener('input', (e) => {
 
     if (!rawSlots.length) return container.innerHTML = `<div class="teacher-free-card" style="background:#fef2f2; border-color:#f87171; color:#991b1b;">❌ No classes found recently for <b>${q}</b>.</div>`;
 
-    let busySlots = [];
-    const groupedByTime = {};
-    
-    rawSlots.forEach(s => {
-        const hash = `${s.batch}-${s.date}-${s.time}`;
-        if(!groupedByTime[hash]) groupedByTime[hash] = [];
-        groupedByTime[hash].push(s);
-    });
-
+    let busySlots = []; const groupedByTime = {};
+    rawSlots.forEach(s => { const hash = `${s.batch}-${s.date}-${s.time}`; if(!groupedByTime[hash]) groupedByTime[hash] = []; groupedByTime[hash].push(s); });
     Object.values(groupedByTime).forEach(slotsArray => {
-        const dailySlot = slotsArray.find(s => s.source === 'daily');
-        const weeklySlot = slotsArray.find(s => s.source === 'weekly');
-        
-        if(dailySlot && weeklySlot) {
-            dailySlot.showBadge = false; busySlots.push(dailySlot);
-        } else if (dailySlot) {
-            dailySlot.showBadge = true; dailySlot.badgeType = 'changed'; busySlots.push(dailySlot);
-        } else if (weeklySlot) {
-            weeklySlot.showBadge = false; busySlots.push(weeklySlot);
-        }
+        const dailySlot = slotsArray.find(s => s.source === 'daily'); const weeklySlot = slotsArray.find(s => s.source === 'weekly');
+        if(dailySlot && weeklySlot) { dailySlot.showBadge = false; busySlots.push(dailySlot); } else if (dailySlot) { dailySlot.showBadge = true; dailySlot.badgeType = 'changed'; busySlots.push(dailySlot); } else if (weeklySlot) { weeklySlot.showBadge = false; busySlots.push(weeklySlot); }
     });
 
     const todaySlots = []; const futureSlots = []; const pastSlots = [];
-    busySlots.forEach(s => {
-        if(s.isToday) todaySlots.push(s);
-        else if (s.timestamp > now.getTime()) futureSlots.push(s);
-        else pastSlots.push(s);
-    });
-
-    todaySlots.sort((a, b) => {
-        const timeA = a.time.includes('-') ? a.time.split('-')[0].trim() : a.time;
-        const timeB = b.time.includes('-') ? b.time.split('-')[0].trim() : b.time;
-        return new Date(`2000/01/01 ${timeA}`) - new Date(`2000/01/01 ${timeB}`);
-    });
-    futureSlots.sort((a, b) => a.timestamp - b.timestamp);
-    pastSlots.sort((a, b) => b.timestamp - a.timestamp);
+    busySlots.forEach(s => { if(s.isToday) todaySlots.push(s); else if (s.timestamp > now.getTime()) futureSlots.push(s); else pastSlots.push(s); });
+    todaySlots.sort((a, b) => { const timeA = a.time.includes('-') ? a.time.split('-')[0].trim() : a.time; const timeB = b.time.includes('-') ? b.time.split('-')[0].trim() : b.time; return new Date(`2000/01/01 ${timeA}`) - new Date(`2000/01/01 ${timeB}`); });
+    futureSlots.sort((a, b) => a.timestamp - b.timestamp); pastSlots.sort((a, b) => b.timestamp - a.timestamp);
 
     let html = '';
-
     const buildSection = (title, slotsArray, emoji) => {
         if(slotsArray.length === 0) return '';
-        const grouped = {};
-        slotsArray.forEach(s => { if (!grouped[s.date]) grouped[s.date] = []; grouped[s.date].push(s); });
-        
+        const grouped = {}; slotsArray.forEach(s => { if (!grouped[s.date]) grouped[s.date] = []; grouped[s.date].push(s); });
         let sectionHtml = `<h3 class="timeline-section-title">${emoji} ${title}</h3>`;
         for (const [date, slots] of Object.entries(grouped)) {
             const rows = slots.map(s => {
-                let badge = '';
-                if(s.showBadge && s.badgeType === 'changed') badge = `<span class="source-tag src-changed">Changed Today</span>`;
+                let badge = ''; if(s.showBadge && s.badgeType === 'changed') badge = `<span class="source-tag src-changed">Changed Today</span>`;
                 return `<div class="class-row" style="${s.isToday ? 'background: rgba(167, 201, 87, 0.1); border-radius: 8px; padding: 5px 10px; border-bottom: none; margin-bottom: 5px;' : ''}"><span class="time">${s.time}</span><span class="subject">${s.batch} ${badge}</span><span class="room" style="background:var(--vanilla-cream); color:var(--hunter-green); border-color:var(--yellow-green);">${s.subject}</span></div>`;
             }).join('');
             sectionHtml += `<div class="schedule-card"><div class="card-body"><div class="date-group"><div class="date-header">📅 ${date}</div>${rows}</div></div></div>`;
@@ -555,12 +437,11 @@ document.getElementById('teacherInput').addEventListener('input', (e) => {
     html += buildSection('Today', todaySlots, '🌟');
     html += buildSection('Upcoming', futureSlots, '🔮');
     html += buildSection('Past (14 Days)', pastSlots, '🕰️');
-    
     container.innerHTML = html;
 });
 
 // ==========================================
-// 8. SOCIAL NETWORK ENGINE & CHAT CONTROLS
+// SOCIAL NETWORK ENGINE & CHAT CONTROLS
 // ==========================================
 function initSocialEngine() {
     if(!auth.currentUser) return; const myUid = auth.currentUser.uid;
@@ -574,9 +455,7 @@ function initSocialEngine() {
             if (senderSnap.exists()) {
                 const s = senderSnap.data();
                 html += `<div class="user-card"><div class="user-card-info"><img src="${s.profilePic}" class="user-card-img"><div class="user-card-details"><h4>${s.name}</h4><p>Class: ${s.studentClass}</p></div></div><div style="display:flex; gap:5px;"><button class="btn-small" style="background:#ef4444;" onclick="rejectFriendRequest('${docSnap.id}')">✖</button><button class="btn-small" onclick="acceptFriendRequest('${docSnap.id}', '${reqData.senderId}', '${s.name}', '${s.profilePic}')">Accept</button></div></div>`;
-                if (LocalNotifications && document.hidden) {
-                    LocalNotifications.schedule({ notifications: [{ title: `New Friend Request`, body: `${s.name} sent you a request!`, id: Date.now() }] });
-                }
+                if (LocalNotifications && document.hidden) { LocalNotifications.schedule({ notifications: [{ title: `New Friend Request`, body: `${s.name} sent you a request!`, id: Date.now() }] }); }
             }
         }
         reqList.innerHTML = html;
@@ -624,9 +503,7 @@ window.openChat = (friendId, friendName, friendPic) => {
             snapshot.docChanges().forEach(change => { 
                 if (change.type === 'added' && change.doc.data().senderId !== myUid) { 
                     const audio = document.getElementById('msgSound'); if(audio) audio.play().catch(e=>{}); 
-                    if (LocalNotifications && document.hidden) {
-                        LocalNotifications.schedule({ notifications: [{ title: `Message from ${friendName}`, body: change.doc.data().text, id: Date.now() }] });
-                    }
+                    if (LocalNotifications && document.hidden) { LocalNotifications.schedule({ notifications: [{ title: `Message from ${friendName}`, body: change.doc.data().text, id: Date.now() }] }); }
                 } 
             });
         }
@@ -642,15 +519,5 @@ window.openChat = (friendId, friendName, friendPic) => {
 window.closeChat = () => { document.getElementById('chatWindow').classList.add('hidden'); currentChatFriendId = null; if(activeChatUnsubscribe) activeChatUnsubscribe(); };
 document.getElementById('chatInputForm').addEventListener('submit', async (e) => { e.preventDefault(); const input = document.getElementById('chatMessageInput'); const text = input.value.trim(); if(!text || !currentChatFriendId) return; input.value = ''; const myUid = auth.currentUser.uid; const chatId = myUid < currentChatFriendId ? `${myUid}_${currentChatFriendId}` : `${currentChatFriendId}_${myUid}`; try { await addDoc(collection(db, "chats", chatId, "messages"), { text: text, senderId: myUid, timestamp: serverTimestamp() }); } catch(e) {} });
 window.deleteMessage = async (msgId) => { if(!currentChatFriendId || !confirm("Delete this message?")) return; const myUid = auth.currentUser.uid; const chatId = myUid < currentChatFriendId ? `${myUid}_${currentChatFriendId}` : `${currentChatFriendId}_${myUid}`; try { await deleteDoc(doc(db, "chats", chatId, "messages", msgId)); } catch(e) {} };
-
-window.clearChat = async () => {
-    if(!currentChatFriendId || !confirm("Clear entire chat history?")) return;
-    const myUid = auth.currentUser.uid; const chatId = myUid < currentChatFriendId ? `${myUid}_${currentChatFriendId}` : `${currentChatFriendId}_${myUid}`;
-    try { const q = query(collection(db, "chats", chatId, "messages")); const snapshot = await getDocs(q); snapshot.forEach(d => deleteDoc(doc(db, "chats", chatId, "messages", d.id))); } catch(e) {}
-};
-
-window.removeFriend = async () => {
-    if(!currentChatFriendId || !confirm("Unfriend this person and delete chat?")) return;
-    const myUid = auth.currentUser.uid;
-    try { await deleteDoc(doc(db, "users", myUid, "friends", currentChatFriendId)); await deleteDoc(doc(db, "users", currentChatFriendId, "friends", myUid)); window.clearChat(); window.closeChat(); } catch(e) { }
-};
+window.clearChat = async () => { if(!currentChatFriendId || !confirm("Clear entire chat history?")) return; const myUid = auth.currentUser.uid; const chatId = myUid < currentChatFriendId ? `${myUid}_${currentChatFriendId}` : `${currentChatFriendId}_${myUid}`; try { const q = query(collection(db, "chats", chatId, "messages")); const snapshot = await getDocs(q); snapshot.forEach(d => deleteDoc(doc(db, "chats", chatId, "messages", d.id))); } catch(e) {} };
+window.removeFriend = async () => { if(!currentChatFriendId || !confirm("Unfriend this person and delete chat?")) return; const myUid = auth.currentUser.uid; try { await deleteDoc(doc(db, "users", myUid, "friends", currentChatFriendId)); await deleteDoc(doc(db, "users", currentChatFriendId, "friends", myUid)); window.clearChat(); window.closeChat(); } catch(e) { } };

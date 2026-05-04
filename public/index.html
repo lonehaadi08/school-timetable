@@ -5,11 +5,8 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
     <title>Student Portal</title>
     <link rel="stylesheet" href="style.css">
-    
     <script type="text/javascript" src="https://cdn.jsdelivr.net/npm/@emailjs/browser@3/dist/email.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js"></script>
-    <script src="https://cdn.jsdelivr.net/npm/dayjs@1/dayjs.min.js"></script>
-    <script src="https://cdn.jsdelivr.net/npm/dayjs@1/plugin/customParseFormat.js"></script>
 </head>
 <body>
     <div class="bg-animation"></div>
@@ -70,7 +67,7 @@
                     <div id="fileNameDisplay" class="file-name">No file chosen</div>
                 </label>
                 <input type="text" id="regName" placeholder="Full Name" required>
-                <input type="tel" id="regPhone" placeholder="Phone Number (e.g., 9876543210)" required>
+                <input type="tel" id="regPhone" placeholder="Phone Number" required>
                 <input type="email" id="regEmail" placeholder="Email Address" required>
                 <div style="display: flex; gap: 10px;">
                     <select id="regClass" required>
@@ -93,7 +90,6 @@
 
             <form id="resetForm" class="auth-form hidden">
                 <h2>Reset Password</h2>
-                <p class="sub-text">Enter your email and we will send you a reset link.</p>
                 <input type="email" id="resetEmail" placeholder="Enter your email" required>
                 <button type="submit" class="btn-primary">Send Reset Link</button>
                 <p class="switch-auth"><span onclick="toggleAuth('login')">Back to Login</span></p>
@@ -110,14 +106,13 @@
                 <button type="submit" class="btn-primary" id="btnVerifyOTP">Verify & Create Account</button>
                 <p class="switch-auth"><span onclick="cancelRegistration()">Cancel</span></p>
                 <div id="otpError" class="error-msg hidden"></div>
-                <div id="otpLoading" class="sub-text hidden" style="color: var(--sage-green); font-weight: bold;">Setting up your profile, please wait...</div>
+                <div id="otpLoading" class="sub-text hidden" style="color: var(--sage-green); font-weight: bold;">Setting up your profile...</div>
             </form>
         </div>
 
         <div id="completeProfileView" class="auth-wrapper hidden">
             <form id="completeProfileForm" class="auth-form">
                 <h2>Just One More Step!</h2>
-                <p class="sub-text">We need a few details to fetch your schedule.</p>
                 <select id="cpClass" required>
                     <option value="" disabled selected>Select Class</option>
                     <option value="8th">8th</option><option value="9th">9th</option><option value="10th">10th</option>
@@ -140,7 +135,7 @@
                     <span class="icon">✨</span>
                     <h1 id="headerTitle">My Schedule</h1>
                 </div>
-                <button onclick="forceRefreshApp()" style="background: var(--sage-green); color: white; border: none; padding: 8px 12px; border-radius: 8px; font-weight: bold; cursor: pointer; box-shadow: 0 2px 5px rgba(0,0,0,0.1); font-size: 0.85rem; transition: 0.2s;">
+                <button id="btnRefreshApp" onclick="forceRefreshApp()" style="background: var(--sage-green); color: white; border: none; padding: 8px 12px; border-radius: 8px; font-weight: bold; cursor: pointer; box-shadow: 0 2px 5px rgba(0,0,0,0.1); font-size: 0.85rem; transition: 0.2s;">
                     🔄 Refresh
                 </button>
             </header>
@@ -159,8 +154,7 @@
             <main class="content-scroll pb-nav">
                 
                 <div id="tabMySchedule" class="tab-content fade-in">
-                    
-                    <!-- NEW: QUICK BATCH DROPDOWN -->
+                    <!-- NEW: BATCH DROPDOWN -->
                     <div style="margin-bottom: 15px;">
                         <select id="myScheduleBatchSelect" style="width: 100%; padding: 12px 15px; border-radius: 12px; border: 1px solid rgba(167, 201, 87, 0.5); background: #fafaf5; font-size: 1rem; font-weight: 700; color: var(--hunter-green); outline: none; box-shadow: 0 2px 5px rgba(0,0,0,0.02);">
                             <option value="">Loading Batches...</option>
@@ -170,7 +164,7 @@
                     <div class="view-toggles" style="display: flex; gap: 10px;">
                         <button class="pill active" id="btnDailyMy" onclick="switchTimeView('daily')" style="flex: 1;">Daily View</button>
                         <button class="pill" id="btnWeeklyMy" onclick="switchTimeView('weekly')" style="flex: 1;">Weekly Plan</button>
-                        <button class="pill" onclick="downloadPDF('myScheduleResults', 'My_Schedule')" style="background: var(--hunter-green); color: white; border-radius: 8px;"><span style="font-size: 1rem;">⬇️</span> PDF</button>
+                        <button class="pill" onclick="downloadPDF('myScheduleResults', 'Schedule')" style="background: var(--hunter-green); color: white; border-radius: 8px;"><span style="font-size: 1rem;">⬇️</span> PDF</button>
                     </div>
                     <div id="myScheduleResults">Loading your timetable...</div>
                 </div>
@@ -185,7 +179,7 @@
 
                 <div id="tabTeachers" class="tab-content hidden fade-in">
                     <div class="search-box" style="display: flex; gap: 10px;">
-                        <input type="text" id="teacherInput" placeholder="Enter Teacher Code or Date (e.g., 21 Apr)..." autocomplete="off" maxlength="15" style="flex: 1;">
+                        <input type="text" id="teacherInput" placeholder="Enter Teacher Code or Date..." autocomplete="off" maxlength="15" style="flex: 1;">
                         <button onclick="downloadPDF('teacherResults', 'Teacher_Schedule')" class="btn-primary" style="padding: 10px 15px;"><span style="font-size: 1rem;">⬇️</span> PDF</button>
                     </div>
                     <div id="teacherResults"><div class="welcome-msg">Search a teacher to see their timeline.</div></div>
@@ -226,7 +220,7 @@
                         </div>
                         
                         <div class="profile-details">
-                            <div class="detail-item"><span>Permanent Batch</span><strong id="profileBatch">...</strong></div>
+                            <div class="detail-item"><span>Perm. Batch</span><strong id="profileBatch">...</strong></div>
                             <div class="detail-item"><span>Aim</span><strong id="profileAim">...</strong></div>
                         </div>
 
