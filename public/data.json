@@ -1,6 +1,6 @@
 {
   "metadata": {
-    "last_updated": "2026-05-03 23:04:28.040945"
+    "last_updated": "2026-05-04 00:04:08.488286"
   },
   "daily": [
     {
@@ -292,17 +292,14 @@
       "Room (31 Mar, Tue)": "R19",
       "Doubt, 2:30-3:30PM,R10 (31 Mar, Tue)": "Test-2@3:00 PM",
       "31 Mar, Tue - 3:30 PM": "Test",
-      "31 Mar, Tue - 4:40 PM": "Test",
-      "29 Mar, Sun - 9:00 AM": "Test-1@9:00 AM",
-      "29 Mar, Sun - 10:20 AM": "Test",
-      "29 Mar, Sun - 11:30 AM": "Test",
-      "Room (29 Mar, Sun)": "R19",
-      "Doubt, 2:30-3:30PM,R12 (29 Mar, Sun)": "Test-2@2:30 PM",
-      "29 Mar, Sun - 3:30 PM": "Test",
-      "29 Mar, Sun - 4:40 PM": "Test"
+      "31 Mar, Tue - 4:40 PM": "Test"
     },
     {
       "Batch": "RB26X",
+      "31 Oct, Fri - 9:00 AM": "Phy(FN)",
+      "31 Oct, Fri - 10:20 AM": "Che(JM)",
+      "31 Oct, Fri - 11:30 AM": "Phy(NS)",
+      "Room (31 Oct, Fri)": "R10",
       "30 Oct, Thu - 9:00 AM": "Che(JM)",
       "30 Oct, Thu - 10:20 AM": "Phy(FN)",
       "30 Oct, Thu - 11:30 AM": "Bio(UR)",
@@ -4840,6 +4837,11 @@
       "30 Mar, Mon - 4:40 PM": "Mat(AK)",
       "30 Mar, Mon - 5:50 PM": "Che(AR)",
       "Room (30 Mar, Mon)": "R06",
+      "Doubt, 2:40-3:40PM,R09 (31 Oct, Fri)": "Phy(NS)@2:30 PM",
+      "31 Oct, Fri - 3:45 PM": "Phy(NS)",
+      "31 Oct, Fri - 5:00 PM": "Phy(NS)",
+      "31 Oct, Fri - 6:15 PM": "Mat(AK)",
+      "Room (31 Oct, Fri)": "R07",
       "30 Oct, Thu - 12:40 PM": "Mat(AK)",
       "Room (30 Oct, Thu)": "R10",
       "Doubt, 2:40-3:40PM,R09 (30 Oct, Thu)": "Mat(AK)@2:30 PM",
