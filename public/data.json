@@ -1,113 +1,128 @@
 {
   "metadata": {
-    "last_updated": "2026-05-20 05:03:11.615640"
+    "last_updated": "2026-05-21 05:08:17.641056"
   },
   "daily": [
     {
+      "Batch": "RB27X",
+      "21 May, Thu - 9:00 AM": "Bio(UR)",
+      "21 May, Thu - 10:20 AM": "Bio(RR)",
+      "21 May, Thu - 11:30 AM": "Che(AR)",
+      "21 May, Thu - 12:40 PM": "Bio(RR)",
+      "Room (21 May, Thu)": "R12"
+    },
+    {
       "Batch": "RF28E",
-      "20 May, Wed - 9:00 AM": "Mat(NF)",
-      "20 May, Wed - 10:20 AM": "Phy(NS)",
-      "20 May, Wed - 11:30 AM": "Mat(AF)",
-      "20 May, Wed - 12:40 PM": "Che(JM)",
-      "Room (20 May, Wed)": "R07"
+      "21 May, Thu - 9:00 AM": "Phy(NS)",
+      "21 May, Thu - 10:20 AM": "Che(JM)",
+      "21 May, Thu - 11:30 AM": "Mat(NF)",
+      "21 May, Thu - 12:40 PM": "Mat(AF)",
+      "Room (21 May, Thu)": "R04"
     },
     {
       "Batch": "RF28X",
-      "20 May, Wed - 9:00 AM": "Mat(AF)",
-      "20 May, Wed - 10:20 AM": "Phy(FN)",
-      "20 May, Wed - 11:30 AM": "Mat(AK)",
-      "20 May, Wed - 12:40 PM": "Che(MA)",
-      "Room (20 May, Wed)": "R10"
+      "21 May, Thu - 9:00 AM": "Phy(FN)",
+      "21 May, Thu - 10:20 AM": "Mat(AF)",
+      "21 May, Thu - 11:30 AM": "Mat(AF)",
+      "21 May, Thu - 12:40 PM": "Che(MA)",
+      "Room (21 May, Thu)": "R10"
+    },
+    {
+      "Batch": "RF28Y",
+      "21 May, Thu - 9:00 AM": "Mat(AF)",
+      "21 May, Thu - 10:20 AM": "Phy(FN)",
+      "21 May, Thu - 11:30 AM": "Che(JM)",
+      "21 May, Thu - 12:40 PM": "Phy(FN)",
+      "Room (21 May, Thu)": "R07"
+    },
+    {
+      "Batch": "RF27U",
+      "21 May, Thu - 9:00 AM": "Che(AR)",
+      "21 May, Thu - 10:20 AM": "Che(MA)",
+      "21 May, Thu - 11:30 AM": "Phy(FN)",
+      "21 May, Thu - 12:40 PM": "Che(AR)",
+      "Room (21 May, Thu)": "R03"
     },
     {
       "Batch": "RF27V",
-      "20 May, Wed - 9:00 AM": "Che(MA)",
-      "20 May, Wed - 10:20 AM": "Mat(NF)",
-      "20 May, Wed - 11:30 AM": "Che(AR)",
-      "20 May, Wed - 12:40 PM": "Phy(NS)",
-      "Room (20 May, Wed)": "R03"
-    },
-    {
-      "Batch": "RM28X",
-      "20 May, Wed - 9:00 AM": "Phy(FB)",
-      "20 May, Wed - 10:20 AM": "Che(JM)",
-      "20 May, Wed - 11:30 AM": "Bio(RR)",
-      "20 May, Wed - 12:40 PM": "Phy(FB)",
-      "Room (20 May, Wed)": "R08"
+      "21 May, Thu - 9:00 AM": "Che(MA)",
+      "21 May, Thu - 10:20 AM": "Che(AR)",
+      "21 May, Thu - 11:30 AM": "Phy(NS)",
+      "21 May, Thu - 12:40 PM": "Mat(NF)",
+      "Room (21 May, Thu)": "R02"
     },
     {
       "Batch": "RM28Y",
-      "20 May, Wed - 9:00 AM": "Che(JM)",
-      "20 May, Wed - 10:20 AM": "Phy(FB)",
-      "20 May, Wed - 11:30 AM": "Phy(FB)",
-      "20 May, Wed - 12:40 PM": "Bio(UR)",
-      "Room (20 May, Wed)": "R09"
+      "21 May, Thu - 9:00 AM": "Che(JM)",
+      "21 May, Thu - 10:20 AM": "Bio(UR)",
+      "21 May, Thu - 11:30 AM": "Phy(FB)",
+      "21 May, Thu - 12:40 PM": "Bio(UR)",
+      "Room (21 May, Thu)": "R09"
     },
     {
       "Batch": "RM27X",
-      "20 May, Wed - 9:00 AM": "Phy(NS)",
-      "20 May, Wed - 10:20 AM": "Bio(UR)",
-      "20 May, Wed - 11:30 AM": "Che(MA)",
-      "20 May, Wed - 12:40 PM": "Bio(RR)",
-      "Room (20 May, Wed)": "R04"
+      "21 May, Thu - 9:00 AM": "Bio(RR)",
+      "21 May, Thu - 10:20 AM": "Phy(NS)",
+      "21 May, Thu - 11:30 AM": "Che(MA)",
+      "21 May, Thu - 12:40 PM": "Che(JM)",
+      "Room (21 May, Thu)": "R08"
     },
     {
       "Batch": "RI30A",
-      "20 May, Wed - 3:30 PM": "Che(JM)",
-      "20 May, Wed - 4:40 PM": "Eng(ST)",
-      "20 May, Wed - 5:50 PM": "Bio(RR)",
-      "Room (20 May, Wed)": "R08"
+      "21 May, Thu - 3:30 PM": "Soc(SB)",
+      "21 May, Thu - 4:40 PM": "Eng(ST)",
+      "21 May, Thu - 5:50 PM": "Mat(AF)",
+      "Room (21 May, Thu)": "R08"
     },
     {
       "Batch": "RI29A",
-      "20 May, Wed - 3:30 PM": "Eng(ST)",
-      "20 May, Wed - 4:40 PM": "Bio(RR)",
-      "20 May, Wed - 5:50 PM": "Mat(AF)",
-      "Room (20 May, Wed)": "R09"
+      "21 May, Thu - 3:30 PM": "Eng(ST)",
+      "21 May, Thu - 4:40 PM": "Mat(AF)",
+      "21 May, Thu - 5:50 PM": "Soc(SB)",
+      "Room (21 May, Thu)": "R09"
     },
     {
       "Batch": "RR27A",
-      "20 May, Wed - 3:30 PM": "Phy(FN)",
-      "20 May, Wed - 4:40 PM": "Mat(AK)",
-      "20 May, Wed - 5:50 PM": "Che(AR)",
-      "Room (20 May, Wed)": "R04"
+      "21 May, Thu - 3:30 PM": "Che(AR)",
+      "21 May, Thu - 4:40 PM": "Phy(FN)",
+      "21 May, Thu - 5:50 PM": "Che(AR)",
+      "Room (21 May, Thu)": "R10"
     },
     {
       "Batch": "RF28A",
-      "20 May, Wed - 3:30 PM": "Phy(NS)",
-      "20 May, Wed - 4:40 PM": "Phy(NS)",
-      "20 May, Wed - 5:50 PM": "Che(MA)",
-      "Room (20 May, Wed)": "R02"
+      "21 May, Thu - 3:30 PM": "Phy(FB)",
+      "21 May, Thu - 4:40 PM": "Che(MA)",
+      "21 May, Thu - 5:50 PM": "Phy(FB)",
+      "Room (21 May, Thu)": "R04"
     },
     {
       "Batch": "RM27Z",
-      "20 May, Wed - 3:30 PM": "Bio(RR)",
-      "20 May, Wed - 4:40 PM": "Phy(FN)",
-      "20 May, Wed - 5:50 PM": "Che(JM)",
-      "Room (20 May, Wed)": "R12"
+      "21 May, Thu - 3:30 PM": "Bio(RR)",
+      "21 May, Thu - 4:40 PM": "Bio(UR)",
+      "21 May, Thu - 5:50 PM": "Che(JM)",
+      "Room (21 May, Thu)": "R02"
     },
     {
       "Batch": "RF28Z",
-      "Doubt, 2:30-3:30PM,R10 (20 May, Wed)": "Phy(FN)@2:15 PM",
-      "20 May, Wed - 3:30 PM": "Mat(NF)",
-      "20 May, Wed - 4:40 PM": "Che(MA)",
-      "20 May, Wed - 5:50 PM": "Phy(FN)",
-      "Room (20 May, Wed)": "R03"
+      "21 May, Thu - 3:30 PM": "Phy(FN)",
+      "21 May, Thu - 4:40 PM": "Mat(NF)",
+      "21 May, Thu - 5:50 PM": "Che(MA)",
+      "Room (21 May, Thu)": "R03"
     },
     {
       "Batch": "RF27Z",
-      "Doubt, 2:30-3:30PM,R10 (20 May, Wed)": "Che(AR)@2:15 PM",
-      "20 May, Wed - 3:30 PM": "Mat(AK)",
-      "20 May, Wed - 4:40 PM": "Mat(NF)",
-      "20 May, Wed - 5:50 PM": "Phy(NS)",
-      "Room (20 May, Wed)": "R06"
+      "Doubt, 2:30-3:30PM,R10 (21 May, Thu)": "Mat(NF)@2:15 PM",
+      "21 May, Thu - 3:30 PM": "Phy(NS)",
+      "21 May, Thu - 4:40 PM": "Phy(NS)",
+      "21 May, Thu - 5:50 PM": "Mat(NF)",
+      "Room (21 May, Thu)": "R12"
     },
     {
       "Batch": "RF27A",
-      "20 May, Wed - 3:30 PM": "Che(MA)",
-      "20 May, Wed - 4:40 PM": "Che(AR)",
-      "20 May, Wed - 5:50 PM": "Mat(NF)",
-      "Room (20 May, Wed)": "R07"
+      "21 May, Thu - 3:30 PM": "Mat(NF)",
+      "21 May, Thu - 4:40 PM": "Che(AR)",
+      "21 May, Thu - 5:50 PM": "Phy(NS)",
+      "Room (21 May, Thu)": "R07"
     }
   ],
   "weekly": [
@@ -143,9 +158,6 @@
       "17 Apr, Fri - 9:00 AM": "Che(MA)",
       "Doubt, 2:30-3:30PM,R10 (17 Apr, Fri)": "NFT-08@2:00 PM",
       "16 Apr, Thu - 4:40 PM": "Phy(FN)",
-      "15 Apr, Wed - 9:00 AM": "Che(JM)",
-      "Doubt, 2:30-3:30PM,R10 (15 Apr, Wed)": "NFT-07@2:00 PM",
-      "Room (15 Apr, Wed)": "R19",
       "2 May, Fri - 10:20 AM": "FTS-NEET@10:00",
       "2 May, Fri - 11:30 AM": "FTS-NEET",
       "Room (2 May, Fri)": "R15",
@@ -194,9 +206,6 @@
       "17 Apr, Thu - 3:45 PM": "FTS-14@2:00",
       "17 Apr, Thu - 4:55 PM": "FTS-14",
       "Room (17 Apr, Thu)": "R06",
-      "15 Apr, Tue - 10:10 AM": "RUBT-05@10:00",
-      "15 Apr, Tue - 11:20 AM": "RUBT-05",
-      "Room (15 Apr, Tue)": "R12",
       "2 May, Thu - 3:45 PM": "Test",
       "2 May, Thu - 4:55 PM": "Test",
       "2 May, Thu - 6:05 PM": "Test",
@@ -252,11 +261,7 @@
       "16 Apr, Tue - 2:00 PM": "Test@2:00",
       "16 Apr, Tue - 3:45 PM": "Test",
       "16 Apr, Tue - 4:55 PM": "Test",
-      "Room (16 Apr, Tue)": "R09",
-      "15 Apr, Mon - 2:00 PM": "Test@2:00",
-      "15 Apr, Mon - 3:45 PM": "Test",
-      "15 Apr, Mon - 4:55 PM": "Test",
-      "Room (15 Apr, Mon)": "R09"
+      "Room (16 Apr, Tue)": "R09"
     },
     {
       "Batch": "JEE ADV 2026",
@@ -344,8 +349,15 @@
       "16 Apr, Thu - 4:40 PM": "Test"
     },
     {
+      "Batch": "JEE 2026",
+      "17 Nov, Mon - 3:45 PM": "FTS-01@2:30",
+      "17 Nov, Mon - 4:45 PM": "FTS-01",
+      "17 Nov, Mon - 5:45 PM": "FTS-01",
+      "Room (17 Nov, Mon)": "R04"
+    },
+    {
       "Batch": "RB27X",
-      "23 May, Sat - 9:00 AM": "Bio(UR)",
+      "23 May, Sat - 9:00 AM": "Phy(FN)",
       "23 May, Sat - 10:20 AM": "Bio(UR)",
       "23 May, Sat - 11:30 AM": "Bio(RR)",
       "23 May, Sat - 12:40 PM": "Che(AR)",
@@ -357,7 +369,7 @@
       "21 May, Thu - 9:00 AM": "Bio(UR)",
       "21 May, Thu - 10:20 AM": "Bio(RR)",
       "21 May, Thu - 11:30 AM": "Che(AR)",
-      "21 May, Thu - 12:40 PM": "Bio(UR)",
+      "21 May, Thu - 12:40 PM": "Bio(RR)",
       "Room (21 May, Thu)": "R12",
       "19 May, Tue - 9:00 AM": "Bio(RR)",
       "19 May, Tue - 10:20 AM": "Che(AR)",
@@ -368,6 +380,11 @@
       "14 May, Thu - 11:30 AM": "Bio(RR)",
       "14 May, Thu - 12:40 PM": "Che(AR)",
       "Room (14 May, Thu)": "R12",
+      "17 Nov, Mon - 9:00 AM": "Che(FR)",
+      "17 Nov, Mon - 10:20 AM": "Che(JM)",
+      "17 Nov, Mon - 11:30 AM": "Bio(RR)",
+      "17 Nov, Mon - 12:40 PM": "Che(JM)",
+      "Room (17 Nov, Mon)": "R02",
       "16 Nov, Sun - 10:20 AM": "RTS@10:00",
       "16 Nov, Sun - 11:30 AM": "RTS@10:00",
       "16 Nov, Sun - 12:40 PM": "RTS@10:00",
@@ -1038,12 +1055,7 @@
       "16 Apr, Thu - 10:20 AM": "Mat(AF)",
       "16 Apr, Thu - 11:30 AM": "Mat(NF)",
       "16 Apr, Thu - 12:40 PM": "Phy(NS)",
-      "Room (16 Apr, Thu)": "R04",
-      "15 Apr, Wed - 9:00 AM": "Mat(NF)",
-      "15 Apr, Wed - 10:20 AM": "Phy(NS)",
-      "15 Apr, Wed - 11:30 AM": "Mat(AF)",
-      "15 Apr, Wed - 12:40 PM": "Che(JM)",
-      "Room (15 Apr, Wed)": "R10"
+      "Room (16 Apr, Thu)": "R04"
     },
     {
       "Batch": "RF28X",
@@ -1054,7 +1066,7 @@
       "22 May, Fri - 11:30 AM": "Mat(AF)",
       "Room (22 May, Fri)": "R10",
       "21 May, Thu - 9:00 AM": "Phy(FN)",
-      "21 May, Thu - 10:20 AM": "Phy(FN)",
+      "21 May, Thu - 10:20 AM": "Mat(AF)",
       "21 May, Thu - 11:30 AM": "Mat(AF)",
       "21 May, Thu - 12:40 PM": "Che(MA)",
       "Room (21 May, Thu)": "R10",
@@ -1157,8 +1169,7 @@
       "16 Apr, Thu - 10:20 AM": "Mat(AK)",
       "16 Apr, Thu - 11:30 AM": "Phy(FN)",
       "16 Apr, Thu - 12:40 PM": "Mat(AF)",
-      "Room (16 Apr, Thu)": "R10",
-      "Doubt, 2:30-3:30PM,R10 (15 Apr, Wed)": "PTM"
+      "Room (16 Apr, Thu)": "R10"
     },
     {
       "Batch": "RF28Y",
@@ -1169,7 +1180,7 @@
       "22 May, Fri - 11:30 AM": "Phy(FN)",
       "Room (22 May, Fri)": "R07",
       "21 May, Thu - 9:00 AM": "Mat(AF)",
-      "21 May, Thu - 10:20 AM": "Mat(AF)",
+      "21 May, Thu - 10:20 AM": "Phy(FN)",
       "21 May, Thu - 11:30 AM": "Che(JM)",
       "21 May, Thu - 12:40 PM": "Phy(FN)",
       "Room (21 May, Thu)": "R07",
@@ -1282,7 +1293,7 @@
     },
     {
       "Batch": "RF27U",
-      "23 May, Sat - 9:00 AM": "Phy(FN)",
+      "23 May, Sat - 9:00 AM": "Che(MA)",
       "23 May, Sat - 10:20 AM": "Che(AR)",
       "23 May, Sat - 11:30 AM": "Phy(FN)",
       "23 May, Sat - 12:40 PM": "Che(MA)",
@@ -2180,11 +2191,6 @@
       "16 Apr, Thu - 11:30 AM": "Phy(NS)",
       "16 Apr, Thu - 12:40 PM": "Che(MA)",
       "Room (16 Apr, Thu)": "R09",
-      "15 Apr, Wed - 9:00 AM": "Che(MA)",
-      "15 Apr, Wed - 10:20 AM": "Mat(NF)",
-      "15 Apr, Wed - 11:30 AM": "Phy(NS)",
-      "15 Apr, Wed - 12:40 PM": "Mat(NF)",
-      "Room (15 Apr, Wed)": "R07",
       "2 Nov, Sun - 10:20 AM": "RTS@10",
       "2 Nov, Sun - 11:30 AM": "RTS",
       "2 Nov, Sun - 12:40 PM": "RTS",
@@ -2866,12 +2872,7 @@
       "17 Apr, Thu - 10:10 AM": "Mat(AK)",
       "17 Apr, Thu - 11:20 AM": "Phy(GA)",
       "17 Apr, Thu - 12:30 PM": "Che(AR)",
-      "Room (17 Apr, Thu)": "R03",
-      "15 Apr, Tue - 9:00 AM": "Phy(GA)",
-      "15 Apr, Tue - 10:10 AM": "Che(AR)",
-      "15 Apr, Tue - 11:20 AM": "Mat(AK)",
-      "15 Apr, Tue - 12:30 PM": "Phy(GA)",
-      "Room (15 Apr, Tue)": "R03"
+      "Room (17 Apr, Thu)": "R03"
     },
     {
       "Batch": "RM28X",
@@ -2990,9 +2991,7 @@
       "16 Apr, Thu - 11:30 AM": "Che(JM)",
       "16 Apr, Thu - 12:40 PM": "Phy(FB)",
       "Room (16 Apr, Thu)": "R08",
-      "16 Apr, Thu - 3:30 PM": "Xtra Bio (RR)",
-      "Room (15 Apr, Wed)": "R08",
-      "Doubt, 2:30-3:30PM,R10 (15 Apr, Wed)": "Xtra Bio (RR)@2:00 PM"
+      "16 Apr, Thu - 3:30 PM": "Xtra Bio (RR)"
     },
     {
       "Batch": "RM28Y",
@@ -3005,7 +3004,7 @@
       "21 May, Thu - 9:00 AM": "Che(JM)",
       "21 May, Thu - 10:20 AM": "Bio(UR)",
       "21 May, Thu - 11:30 AM": "Phy(FB)",
-      "21 May, Thu - 12:40 PM": "Bio(RR)",
+      "21 May, Thu - 12:40 PM": "Bio(UR)",
       "Room (21 May, Thu)": "R09",
       "20 May, Wed - 9:00 AM": "Che(JM)",
       "20 May, Wed - 10:20 AM": "Phy(FB)",
@@ -3107,20 +3106,14 @@
       "17 Apr, Fri - 11:30 AM": "Che(JM)",
       "Room (17 Apr, Fri)": "R12",
       "16 Apr, Thu - 3:30 PM": "Xtra Bio (RR)",
-      "Room (16 Apr, Thu)": "R08",
-      "15 Apr, Wed - 9:00 AM": "Phy(FB)",
-      "15 Apr, Wed - 10:20 AM": "Che(JM)",
-      "15 Apr, Wed - 11:30 AM": "Bio(UR)",
-      "15 Apr, Wed - 12:40 PM": "Bio(RR)",
-      "Room (15 Apr, Wed)": "R08",
-      "Doubt, 2:30-3:30PM,R10 (15 Apr, Wed)": "Xtra Bio (RR)@2:00 PM"
+      "Room (16 Apr, Thu)": "R08"
     },
     {
       "Batch": "RM27X",
-      "23 May, Sat - 9:00 AM": "Che(MA)",
+      "23 May, Sat - 9:00 AM": "Che(JM)",
       "23 May, Sat - 10:20 AM": "Bio(RR)",
       "23 May, Sat - 11:30 AM": "Phy(NS)",
-      "23 May, Sat - 12:40 PM": "Che(JM)",
+      "23 May, Sat - 12:40 PM": "Bio(UR)",
       "Room (23 May, Sat)": "R08",
       "23 May, Sat - 3:30 PM": "PRTS",
       "23 May, Sat - 4:40 PM": "PRTS",
@@ -3237,11 +3230,6 @@
       "16 Apr, Thu - 11:30 AM": "Bio(UR)",
       "16 Apr, Thu - 12:40 PM": "Che(JM)",
       "Room (16 Apr, Thu)": "R08",
-      "15 Apr, Wed - 9:00 AM": "Phy(NS)",
-      "15 Apr, Wed - 10:20 AM": "Bio(RR)",
-      "15 Apr, Wed - 11:30 AM": "Che(JM)",
-      "15 Apr, Wed - 12:40 PM": "Che(MA)",
-      "Room (15 Apr, Wed)": "R09",
       "19 Oct, Sun - 10:20 AM": "Che(FR)@10:00",
       "19 Oct, Sun - 11:30 AM": "Che(FR)",
       "19 Oct, Sun - 12:40 PM": "Che(FR)",
@@ -3927,12 +3915,7 @@
       "16 Apr, Wed - 10:10 AM": "Phy(NS)",
       "16 Apr, Wed - 11:20 AM": "Che(JM)",
       "16 Apr, Wed - 12:30 PM": "Bio(UR)",
-      "Room (16 Apr, Wed)": "R10",
-      "15 Apr, Tue - 9:00 AM": "Bio(MH)",
-      "15 Apr, Tue - 10:10 AM": "Che(JM)",
-      "15 Apr, Tue - 11:20 AM": "Bio(UR)",
-      "15 Apr, Tue - 12:30 PM": "Phy(NS)",
-      "Room (15 Apr, Tue)": "R06"
+      "Room (16 Apr, Wed)": "R10"
     },
     {
       "Batch": "Extra 1",
@@ -4066,7 +4049,9 @@
       "22 May, Fri - 9:00 AM": "olmp Bio(RR)",
       "22 May, Fri - 10:20 AM": "Olmp Phy(FB)",
       "22 May, Fri - 11:30 AM": "Olmp Che(MA)",
-      "Room (22 May, Fri)": "R02",
+      "Room (22 May, Fri)": "R06",
+      "22 May, Fri - 3:30 PM": "CBSE Soc",
+      "22 May, Fri - 4:40 PM": "CBSE Eng",
       "21 May, Thu - 3:30 PM": "Soc(SB)",
       "21 May, Thu - 4:40 PM": "Eng(ST)",
       "21 May, Thu - 5:50 PM": "Mat(AF)",
@@ -4178,10 +4163,10 @@
       "17 Apr, Fri - 4:40 PM": "Mat(AF)",
       "17 Apr, Fri - 5:50 PM": "Phy(FB)",
       "Room (17 Apr, Fri)": "R02",
-      "15 Apr, Wed - 3:30 PM": "Eng(ST)",
-      "15 Apr, Wed - 4:40 PM": "Mat(AF)",
-      "15 Apr, Wed - 5:50 PM": "Phy(FB)",
-      "Room (15 Apr, Wed)": "R08",
+      "17 Nov, Mon - 3:45 PM": "Che (JM)",
+      "17 Nov, Mon - 4:45 PM": "Urd (SZ)",
+      "17 Nov, Mon - 5:45 PM": "Mat (AF)",
+      "Room (17 Nov, Mon)": "R02",
       "15 Nov, Sat - 3:45 PM": "Phy (FB)",
       "15 Nov, Sat - 4:45 PM": "Eng (ST)",
       "15 Nov, Sat - 5:45 PM": "Soc (SB)",
@@ -4596,10 +4581,10 @@
       "16 Apr, Wed - 4:55 PM": "Eng(FZ)",
       "16 Apr, Wed - 6:05 PM": "Mat(AF)",
       "Room (16 Apr, Wed)": "R06",
-      "15 Apr, Tue - 3:45 PM": "Soc(SB)",
-      "15 Apr, Tue - 4:55 PM": "Phy(FA)",
-      "15 Apr, Tue - 6:05 PM": "Che(JM)",
-      "Room (15 Apr, Tue)": "R06",
+      "17 Nov, Sun - 9:00 AM": "Mat(AF)",
+      "17 Nov, Sun - 10:10 AM": "Mat(AF)",
+      "17 Nov, Sun - 11:20 AM": "Phy(SA)",
+      "Room (17 Nov, Sun)": "R01",
       "16 Nov, Sat - 3:30 PM": "Phy(SA)",
       "16 Nov, Sat - 4:35 PM": "Soc(SN)",
       "16 Nov, Sat - 5:40 PM": "Phy(SA)",
@@ -5217,10 +5202,10 @@
       "17 Apr, Fri - 4:40 PM": "Phy(FB)",
       "17 Apr, Fri - 5:50 PM": "Mat(AF)",
       "Room (17 Apr, Fri)": "R08",
-      "15 Apr, Wed - 3:30 PM": "Che(JM)",
-      "15 Apr, Wed - 4:40 PM": "Phy(FB)",
-      "15 Apr, Wed - 5:50 PM": "Mat(AF)",
-      "Room (15 Apr, Wed)": "R09",
+      "17 Nov, Mon - 3:45 PM": "Urd (SZ)",
+      "17 Nov, Mon - 4:45 PM": "Mat (AF)",
+      "17 Nov, Mon - 5:45 PM": "Che (JM)",
+      "Room (17 Nov, Mon)": "R03",
       "15 Nov, Sat - 3:45 PM": "Eng (ST)",
       "15 Nov, Sat - 4:45 PM": "Soc (SB)",
       "15 Nov, Sat - 5:45 PM": "Phy (FB)",
@@ -5665,10 +5650,10 @@
       "16 Apr, Wed - 4:55 PM": "Mat(AF)",
       "16 Apr, Wed - 6:05 PM": "Phy(FA)",
       "Room (16 Apr, Wed)": "R01",
-      "15 Apr, Tue - 3:45 PM": "FZ & SZ",
-      "15 Apr, Tue - 4:55 PM": "Che(JM)",
-      "15 Apr, Tue - 6:05 PM": "Soc(SB)",
-      "Room (15 Apr, Tue)": "R01",
+      "17 Nov, Sun - 9:00 AM": "Soc(SN)",
+      "17 Nov, Sun - 10:10 AM": "Soc(SN)",
+      "17 Nov, Sun - 11:20 AM": "Mat(AF)",
+      "Room (17 Nov, Sun)": "R02",
       "15 Nov, Fri - 3:30 PM": "Mat(AF)",
       "15 Nov, Fri - 4:35 PM": "Mat(AF)",
       "15 Nov, Fri - 5:40 PM": "Soc(SN)",
@@ -6434,11 +6419,7 @@
       "16 Apr, Thu - 3:30 PM": "Phy(NS)",
       "16 Apr, Thu - 4:40 PM": "Mat(AF)",
       "16 Apr, Thu - 5:50 PM": "Che(MA)",
-      "Room (16 Apr, Thu)": "R03",
-      "15 Apr, Wed - 3:30 PM": "Mat(AF)",
-      "15 Apr, Wed - 4:40 PM": "Phy(NS)",
-      "15 Apr, Wed - 5:50 PM": "Che(MA)",
-      "Room (15 Apr, Wed)": "R03"
+      "Room (16 Apr, Thu)": "R03"
     },
     {
       "Batch": "RM27Z",
@@ -6545,11 +6526,7 @@
       "16 Apr, Thu - 3:30 PM": "Bio(UR)",
       "16 Apr, Thu - 4:40 PM": "Che(JM)",
       "16 Apr, Thu - 5:50 PM": "Bio(RR)",
-      "Room (16 Apr, Thu)": "R02",
-      "15 Apr, Wed - 3:30 PM": "Bio(RR)",
-      "15 Apr, Wed - 4:40 PM": "Che(JM)",
-      "15 Apr, Wed - 5:50 PM": "Bio(RR)",
-      "Room (15 Apr, Wed)": "R12"
+      "Room (16 Apr, Thu)": "R02"
     },
     {
       "Batch": "RF28Z",
@@ -6559,7 +6536,7 @@
       "22 May, Fri - 3:30 PM": "Che(MA)",
       "22 May, Fri - 4:40 PM": "Phy(FN)",
       "22 May, Fri - 5:50 PM": "Mat(NF)",
-      "Room (22 May, Fri)": "R06",
+      "Room (22 May, Fri)": "R08",
       "21 May, Thu - 3:30 PM": "Phy(FN)",
       "21 May, Thu - 4:40 PM": "Mat(NF)",
       "21 May, Thu - 5:50 PM": "Che(MA)",
@@ -6685,12 +6662,7 @@
       "16 Apr, Thu - 3:30 PM": "Mat(NF)",
       "16 Apr, Thu - 4:40 PM": "Che(MA)",
       "16 Apr, Thu - 5:50 PM": "Phy(FN)",
-      "Room (16 Apr, Thu)": "R06",
-      "Doubt, 2:30-3:30PM,R10 (15 Apr, Wed)": "Che(MA)@2:00 PM",
-      "15 Apr, Wed - 3:30 PM": "Mat(NF)",
-      "15 Apr, Wed - 4:40 PM": "Che(MA)",
-      "15 Apr, Wed - 5:50 PM": "Mat(NF)",
-      "Room (15 Apr, Wed)": "R07"
+      "Room (16 Apr, Thu)": "R06"
     },
     {
       "Batch": "RF27Z",
@@ -7379,10 +7351,6 @@
       "16 Apr, Thu - 4:40 PM": "Mat(NF)",
       "16 Apr, Thu - 5:50 PM": "Phy(NS)",
       "Room (16 Apr, Thu)": "R07",
-      "15 Apr, Wed - 3:30 PM": "Che(MA)",
-      "15 Apr, Wed - 4:40 PM": "Mat(NF)",
-      "15 Apr, Wed - 5:50 PM": "Phy(NS)",
-      "Room (15 Apr, Wed)": "R04",
       "2 Nov, Sun - 10:20 AM": "RTS@10",
       "2 Nov, Sun - 11:30 AM": "RTS",
       "2 Nov, Sun - 12:40 PM": "RTS",
@@ -8022,11 +7990,7 @@
       "16 Apr, Wed - 3:45 PM": "Mat(AE)",
       "16 Apr, Wed - 4:55 PM": "Che(AR)",
       "16 Apr, Wed - 6:05 PM": "Phy(FN)",
-      "Room (16 Apr, Wed)": "R02",
-      "15 Apr, Tue - 3:45 PM": "Mat(AE)",
-      "15 Apr, Tue - 4:55 PM": "Phy(FN)",
-      "15 Apr, Tue - 6:05 PM": "Che(AR)",
-      "Room (15 Apr, Tue)": "R02"
+      "Room (16 Apr, Wed)": "R02"
     }
   ]
 }
